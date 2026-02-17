@@ -193,6 +193,11 @@ func fetchModelsForConfig(
 		err        error
 	)
 
+	// 互斥验证：CCR 和新格式转换系统不能同时启用
+	if enableCCR && enableConversion {
+		return nil, fmt.Errorf("CCR 格式转换和新格式转换系统不能同时启用，请只选择其中一个")
+	}
+
 	// 配置校验：如果启用转换，source 必须有效，target 可以为空（使用 channelType）
 	if enableConversion {
 		if sourceFormat == "" {

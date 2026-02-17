@@ -1055,22 +1055,41 @@ function addCommonModels() {
 // CCR 复选框切换事件监听
 document.addEventListener('DOMContentLoaded', function() {
   const enableCCRCheckbox = document.getElementById('channelEnableCCR');
+  const enableConversionCheckbox = document.getElementById('channelEnableConversion');
+
   if (enableCCRCheckbox) {
     enableCCRCheckbox.addEventListener('change', function() {
       const ccrTransformerGroup = document.getElementById('ccrTransformerGroup');
       if (ccrTransformerGroup) {
         ccrTransformerGroup.style.display = this.checked ? 'block' : 'none';
       }
+
+      // 互斥：如果勾选 CCR，自动取消勾选新格式转换
+      if (this.checked && enableConversionCheckbox) {
+        enableConversionCheckbox.checked = false;
+        const conversionConfigGroup = document.getElementById('conversionConfigGroup');
+        if (conversionConfigGroup) {
+          conversionConfigGroup.style.display = 'none';
+        }
+      }
     });
   }
 
   // 新格式转换复选框切换事件监听
-  const enableConversionCheckbox = document.getElementById('channelEnableConversion');
   if (enableConversionCheckbox) {
     enableConversionCheckbox.addEventListener('change', function() {
       const conversionConfigGroup = document.getElementById('conversionConfigGroup');
       if (conversionConfigGroup) {
         conversionConfigGroup.style.display = this.checked ? 'block' : 'none';
+      }
+
+      // 互斥：如果勾选新格式转换，自动取消勾选 CCR
+      if (this.checked && enableCCRCheckbox) {
+        enableCCRCheckbox.checked = false;
+        const ccrTransformerGroup = document.getElementById('ccrTransformerGroup');
+        if (ccrTransformerGroup) {
+          ccrTransformerGroup.style.display = 'none';
+        }
       }
     });
   }
