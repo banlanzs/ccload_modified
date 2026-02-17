@@ -372,18 +372,18 @@
                 </label>
                 <div id="conversionConfigGroup" style="display: none; margin-left: 24px;">
                   <div style="margin-bottom: 12px;">
-                    <label class="form-label" for="channelConversionSourceFormat">源格式（空=自动检测）</label>
+                    <label class="form-label" for="channelConversionSourceFormat">源格式（实际API格式）</label>
                     <select id="channelConversionSourceFormat" class="form-input">
-                      <option value="">自动检测</option>
+                      <option value="">-- 请选择 --</option>
                       <option value="openai">OpenAI</option>
                       <option value="anthropic">Anthropic (Claude)</option>
                       <option value="gemini">Gemini</option>
                     </select>
                   </div>
                   <div>
-                    <label class="form-label" for="channelConversionTargetFormat">目标格式（空=根据渠道类型推断）</label>
+                    <label class="form-label" for="channelConversionTargetFormat">目标格式（空=使用渠道类型）</label>
                     <select id="channelConversionTargetFormat" class="form-input">
-                      <option value="">自动推断</option>
+                      <option value="">自动推断（使用渠道类型）</option>
                       <option value="openai">OpenAI</option>
                       <option value="anthropic">Anthropic (Claude)</option>
                       <option value="gemini">Gemini</option>

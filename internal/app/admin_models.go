@@ -193,13 +193,17 @@ func fetchModelsForConfig(
 		err        error
 	)
 
-	// 配置校验：如果启用转换，source 和 target 必须有效
+	// 配置校验：如果启用转换，source 必须有效，target 可以为空（使用 channelType）
 	if enableConversion {
-		if sourceFormat == "" || targetFormat == "" {
-			return nil, fmt.Errorf("启用格式转换时，源格式和目标格式不能为空")
+		if sourceFormat == "" {
+			return nil, fmt.Errorf("启用格式转换时，源格式不能为空")
 		}
 		if util.NormalizeChannelType(sourceFormat) == "" {
 			return nil, fmt.Errorf("无效的源格式: %s", sourceFormat)
+		}
+		// 目标格式为空时，使用渠道类型
+		if targetFormat == "" {
+			targetFormat = channelType
 		}
 		if util.NormalizeChannelType(targetFormat) == "" {
 			return nil, fmt.Errorf("无效的目标格式: %s", targetFormat)
