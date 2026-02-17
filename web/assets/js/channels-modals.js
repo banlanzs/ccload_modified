@@ -901,10 +901,24 @@ async function fetchModelsFromAPI() {
     .map(key => (key || '').trim())
     .filter(Boolean)[0];
 
-  // 读取格式转换配置
+  // 读取格式转换配置（新系统）
   const enableConversion = document.getElementById('channelEnableConversion')?.checked || false;
   const conversionSourceFormat = document.getElementById('channelConversionSourceFormat')?.value || '';
   const conversionTargetFormat = document.getElementById('channelConversionTargetFormat')?.value || '';
+
+  // 读取 CCR 格式转换配置（旧系统）
+  const enableCCR = document.getElementById('channelEnableCCR')?.checked || false;
+  const ccrTransformer = document.getElementById('channelCCRTransformer')?.value || '';
+
+  // 调试信息
+  console.log('[fetchModelsFromAPI] 格式转换配置:', {
+    enableConversion,
+    conversionSourceFormat,
+    conversionTargetFormat,
+    enableCCR,
+    ccrTransformer,
+    channelType
+  });
 
   if (!channelUrl) {
     if (window.showError) {
@@ -934,7 +948,9 @@ async function fetchModelsFromAPI() {
       api_key: firstValidKey,
       enable_conversion: enableConversion,
       conversion_source_format: conversionSourceFormat,
-      conversion_target_format: conversionTargetFormat
+      conversion_target_format: conversionTargetFormat,
+      enable_ccr: enableCCR,
+      ccr_transformer: ccrTransformer
     })
   };
 

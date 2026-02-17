@@ -23,10 +23,14 @@ type FetchModelsRequest struct {
 	URL         string `json:"url" binding:"required"`
 	APIKey      string `json:"api_key" binding:"required"`
 
-	// 格式转换配置（可选）
+	// 新格式转换配置（可选）
 	EnableConversion       bool   `json:"enable_conversion"`
 	ConversionSourceFormat string `json:"conversion_source_format,omitempty"`
 	ConversionTargetFormat string `json:"conversion_target_format,omitempty"`
+
+	// 旧的 CCR 格式转换配置（可选）
+	EnableCCR      bool   `json:"enable_ccr"`
+	CCRTransformer string `json:"ccr_transformer"`
 }
 
 // FetchModelsResponse 获取模型列表响应
@@ -90,6 +94,8 @@ func (s *Server) HandleFetchModels(c *gin.Context) {
 		channel.EnableConversion,
 		channel.ConversionSourceFormat,
 		channel.ConversionTargetFormat,
+		channel.EnableCCR,
+		channel.CCRTransformer,
 	)
 	if err != nil {
 		// [INFO] 修复：统一返回200，通过success字段区分成功/失败（上游错误是预期内的）
@@ -114,6 +120,7 @@ func (s *Server) HandleFetchModelsPreview(c *gin.Context) {
 	req.APIKey = strings.TrimSpace(req.APIKey)
 	req.ConversionSourceFormat = strings.TrimSpace(req.ConversionSourceFormat)
 	req.ConversionTargetFormat = strings.TrimSpace(req.ConversionTargetFormat)
+	req.CCRTransformer = strings.TrimSpace(req.CCRTransformer)
 
 	if req.ChannelType == "" || req.URL == "" || req.APIKey == "" {
 		RespondErrorMsg(c, http.StatusBadRequest, "channel_type、url、api_key为必填字段")
@@ -128,6 +135,8 @@ func (s *Server) HandleFetchModelsPreview(c *gin.Context) {
 		req.EnableConversion,
 		req.ConversionSourceFormat,
 		req.ConversionTargetFormat,
+		req.EnableCCR,
+		req.CCRTransformer,
 	)
 	if err != nil {
 		// [INFO] 修复：统一返回200，通过success字段区分成功/失败（上游错误是预期内的）
@@ -139,15 +148,28 @@ func (s *Server) HandleFetchModelsPreview(c *gin.Context) {
 
 // resolveEffectiveFormat 解析用于模型发现的有效协议格式
 // 规则：
-// 1. 如果启用了格式转换且源格式有效，使用源格式
-// 2. 否则使用渠道类型
-func resolveEffectiveFormat(channelType string, enableConversion bool, sourceFormat string) string {
+// 1. 优先使用新格式转换系统（EnableConversion + ConversionSourceFormat）
+// 2. 回退到旧的 CCR 系统（EnableCCR + CCRTransformer）
+// 3. 最后使用渠道类型
+func resolveEffectiveFormat(channelType string, enableConversion bool, sourceFormat string, enableCCR bool, ccrTransformer string) string {
+	// 新格式转换系统
 	if enableConversion && sourceFormat != "" {
 		normalized := util.NormalizeChannelType(sourceFormat)
 		if normalized != "" {
 			return sourceFormat
 		}
 	}
+
+	// 旧的 CCR 系统
+	if enableCCR && ccrTransformer != "" {
+		switch ccrTransformer {
+		case "openai_to_claude":
+			return "openai" // 源格式是 OpenAI
+		case "claude_to_openai":
+			return "anthropic" // 源格式是 Claude (Anthropic)
+		}
+	}
+
 	return channelType
 }
 
@@ -156,9 +178,11 @@ func fetchModelsForConfig(
 	channelType, channelURL, apiKey string,
 	enableConversion bool,
 	sourceFormat, targetFormat string,
+	enableCCR bool,
+	ccrTransformer string,
 ) (*FetchModelsResponse, error) {
 	// 解析有效格式（用于选择 fetcher）
-	effectiveFormat := resolveEffectiveFormat(channelType, enableConversion, sourceFormat)
+	effectiveFormat := resolveEffectiveFormat(channelType, enableConversion, sourceFormat, enableCCR, ccrTransformer)
 
 	normalizedType := util.NormalizeChannelType(effectiveFormat)
 	source := determineSource(effectiveFormat)
