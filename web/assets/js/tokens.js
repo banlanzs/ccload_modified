@@ -923,14 +923,24 @@
       }
 
       container.innerHTML = models.map(model => `
-        <label style="display: flex; align-items: center; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--neutral-100);"
-          onmouseover="this.style.background='var(--neutral-50)'" onmouseout="this.style.background=''">
-          <input type="checkbox" style="margin-right: 8px;"
-            ${selectedModelsForAdd.has(model) ? 'checked' : ''}
-            onchange="toggleModelForAdd('${escapeHtml(model)}', this.checked)">
+        <label class="model-option-item" data-model="${escapeHtml(model)}"
+          style="display: flex; align-items: center; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--neutral-100);">
+          <input type="checkbox" class="model-option-checkbox" data-model="${escapeHtml(model)}" style="margin-right: 8px;"
+            ${selectedModelsForAdd.has(model) ? 'checked' : ''}>
           <span style="font-family: monospace; font-size: 13px;">${escapeHtml(model)}</span>
         </label>
       `).join('');
+
+      // Event delegation: attach once on container
+      if (!container.dataset.delegated) {
+        container.addEventListener('change', (e) => {
+          const checkbox = e.target.closest('.model-option-checkbox');
+          if (checkbox) {
+            toggleModelForAdd(checkbox.dataset.model || '', checkbox.checked);
+          }
+        });
+        container.dataset.delegated = '1';
+      }
     }
 
     /**
