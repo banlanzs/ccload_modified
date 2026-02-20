@@ -429,7 +429,11 @@ function toggleInlineKeyVisibility() {
 }
 
 function updateInlineKey(index, value) {
-  inlineKeyTableData[index] = value.trim();
+  const nextValue = value.trim();
+  if (inlineKeyTableData[index] === nextValue) return;
+
+  inlineKeyTableData[index] = nextValue;
+  markChannelFormDirty();
 
   const hiddenInput = document.getElementById('channelApiKey');
   if (hiddenInput) {
@@ -550,23 +554,10 @@ function copyKeyToClipboard(index) {
   const keyText = inlineKeyTableData[index];
   if (!keyText) return;
 
-  navigator.clipboard.writeText(keyText).then(() => {
+  window.copyToClipboard(keyText).then(() => {
     showToast(window.t('channels.keyCopied'), 'success');
   }).catch(() => {
-    // 降级：使用传统方式复制
-    const textArea = document.createElement('textarea');
-    textArea.value = keyText;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-9999px';
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      showToast(window.t('channels.keyCopied'), 'success');
-    } catch {
-      showToast(window.t('channels.keyCopyFailed'), 'error');
-    }
-    document.body.removeChild(textArea);
+    showToast(window.t('channels.keyCopyFailed'), 'error');
   });
 }
 
@@ -590,6 +581,7 @@ function deleteInlineKey(index) {
     updateBatchDeleteButton();
 
     renderInlineKeyTable();
+    markChannelFormDirty();
 
     setTimeout(() => {
       if (tableContainer) {
@@ -693,6 +685,7 @@ function batchDeleteSelectedKeys() {
   updateBatchDeleteButton();
 
   renderInlineKeyTable();
+  markChannelFormDirty();
 
   setTimeout(() => {
     if (tableContainer) {
@@ -728,28 +721,6 @@ function getVisibleKeyIndices() {
     .filter(index => index !== null);
 }
 
-function shouldShowKey(index) {
-  if (currentKeyStatusFilter === 'all') {
-    return true;
-  }
-
-  const keyCooldown = currentChannelKeyCooldowns.find(kc => kc.key_index === index);
-  const isCoolingDown = keyCooldown && keyCooldown.cooldown_remaining_ms > 0;
-
-  if (currentKeyStatusFilter === 'normal') {
-    return !isCoolingDown;
-  }
-  if (currentKeyStatusFilter === 'cooldown') {
-    return isCoolingDown;
-  }
-
-  return true;
-}
-
-function openInlineKeyImport() {
-  openKeyImportModal();
-}
-
 function confirmInlineKeyImport() {
   const textarea = document.getElementById('keyImportTextarea');
   const input = textarea.value.trim();
@@ -779,6 +750,7 @@ function confirmInlineKeyImport() {
 
   closeKeyImportModal();
   renderInlineKeyTable();
+  if (addedCount > 0) markChannelFormDirty();
 
   const duplicates = newKeys.length - addedCount;
   const msg = duplicates > 0
@@ -888,25 +860,11 @@ function copyExportKeys() {
   const text = document.getElementById('keyExportPreview').value;
   const count = selectedKeyIndices.size;
 
-  navigator.clipboard.writeText(text).then(() => {
+  window.copyToClipboard(text).then(() => {
     showToast(window.t('channels.keysCopied', { count }), 'success');
     closeKeyExportModal();
   }).catch(() => {
-    // 降级：使用传统方式复制
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-9999px';
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      showToast(window.t('channels.keysCopied', { count }), 'success');
-      closeKeyExportModal();
-    } catch {
-      showToast(window.t('channels.keyCopyFailed'), 'error');
-    }
-    document.body.removeChild(textArea);
+    showToast(window.t('channels.keyCopyFailed'), 'error');
   });
 }
 

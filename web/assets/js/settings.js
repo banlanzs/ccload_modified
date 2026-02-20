@@ -145,10 +145,10 @@ function renderInput(setting) {
       const isTrue = setting.value === 'true' || setting.value === '1';
       return `
         <label style="margin-right: 16px; cursor: pointer;">
-          <input type="radio" name="${safeKey}" value="true" ${isTrue ? 'checked' : ''} style="cursor: pointer;"> ${t('common.enable')}
+          <input type="radio" name="${safeKey}" value="true" ${isTrue ? 'checked' : ''}> ${t('common.enable')}
         </label>
         <label style="cursor: pointer;">
-          <input type="radio" name="${safeKey}" value="false" ${!isTrue ? 'checked' : ''} style="cursor: pointer;"> ${t('common.disable')}
+          <input type="radio" name="${safeKey}" value="false" ${!isTrue ? 'checked' : ''}> ${t('common.disable')}
         </label>`;
     case 'int':
     case 'duration':
@@ -216,7 +216,7 @@ async function saveAllSettings() {
   }
 
   if (Object.keys(updates).length === 0) {
-    showInfo(t('settings.msg.noChanges'));
+    window.showNotification(t('settings.msg.noChanges'), 'info');
     return;
   }
 
@@ -251,11 +251,6 @@ async function resetSetting(key) {
     console.error('重置异常:', err);
     showError(t('settings.msg.resetFailed') + ': ' + err.message);
   }
-}
-
-// showSuccess/showError 已在 ui.js 中定义（toast 通知），无需重复定义
-function showInfo(msg) {
-  window.showNotification(msg, 'info');
 }
 
 // 页面加载时执行

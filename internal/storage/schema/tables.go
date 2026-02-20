@@ -31,7 +31,7 @@ func DefineAPIKeysTable() *TableBuilder {
 		Column("id INT PRIMARY KEY AUTO_INCREMENT").
 		Column("channel_id INT NOT NULL").
 		Column("key_index INT NOT NULL").
-		Column("api_key VARCHAR(100) NOT NULL").
+		Column("api_key VARCHAR(255) NOT NULL").
 		Column("key_strategy VARCHAR(32) NOT NULL DEFAULT 'sequential'").
 		Column("cooldown_until BIGINT NOT NULL DEFAULT 0").
 		Column("cooldown_duration_ms BIGINT NOT NULL DEFAULT 0").
@@ -124,8 +124,9 @@ func DefineLogsTable() *TableBuilder {
 		Column("is_streaming TINYINT NOT NULL DEFAULT 0").
 		Column("first_byte_time DOUBLE NOT NULL DEFAULT 0.0").
 		Column("api_key_used VARCHAR(191) NOT NULL DEFAULT ''").
-		Column("auth_token_id BIGINT NOT NULL DEFAULT 0").   // 客户端使用的API令牌ID（新增2025-12）
-		Column("client_ip VARCHAR(45) NOT NULL DEFAULT ''"). // 客户端IP地址（新增2025-12）
+		Column("api_key_hash VARCHAR(64) NOT NULL DEFAULT ''"). // API Key SHA256（用于精确定位 key_index）
+		Column("auth_token_id BIGINT NOT NULL DEFAULT 0").      // 客户端使用的API令牌ID（新增2025-12）
+		Column("client_ip VARCHAR(45) NOT NULL DEFAULT ''").    // 客户端IP地址（新增2025-12）
 		Column("input_tokens INT NOT NULL DEFAULT 0").
 		Column("output_tokens INT NOT NULL DEFAULT 0").
 		Column("cache_read_input_tokens INT NOT NULL DEFAULT 0").
