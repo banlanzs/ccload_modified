@@ -17,7 +17,7 @@ import (
 // GetAPIKeys 获取指定渠道的所有 API Key（按 key_index 升序）
 func (s *SQLStore) GetAPIKeys(ctx context.Context, channelID int64) ([]*model.APIKey, error) {
 	query := `
-		SELECT id, channel_id, key_index, api_key, key_strategy,
+		SELECT id, channel_id, key_index, api_key, label, key_strategy,
 		       cooldown_until, cooldown_duration_ms, created_at, updated_at
 		FROM api_keys
 		WHERE channel_id = ?
@@ -39,6 +39,7 @@ func (s *SQLStore) GetAPIKeys(ctx context.Context, channelID int64) ([]*model.AP
 			&key.ChannelID,
 			&key.KeyIndex,
 			&key.APIKey,
+			&key.Label,
 			&key.KeyStrategy,
 			&key.CooldownUntil,
 			&key.CooldownDurationMs,
@@ -67,7 +68,7 @@ func (s *SQLStore) GetAPIKeys(ctx context.Context, channelID int64) ([]*model.AP
 // GetAPIKey 获取指定渠道的特定 API Key
 func (s *SQLStore) GetAPIKey(ctx context.Context, channelID int64, keyIndex int) (*model.APIKey, error) {
 	query := `
-		SELECT id, channel_id, key_index, api_key, key_strategy,
+		SELECT id, channel_id, key_index, api_key, label, key_strategy,
 		       cooldown_until, cooldown_duration_ms, created_at, updated_at
 		FROM api_keys
 		WHERE channel_id = ? AND key_index = ?
@@ -82,6 +83,7 @@ func (s *SQLStore) GetAPIKey(ctx context.Context, channelID int64, keyIndex int)
 		&key.ChannelID,
 		&key.KeyIndex,
 		&key.APIKey,
+		&key.Label,
 		&key.KeyStrategy,
 		&key.CooldownUntil,
 		&key.CooldownDurationMs,
@@ -127,21 +129,21 @@ func (s *SQLStore) CreateAPIKeysBatch(ctx context.Context, keys []*model.APIKey)
 
 		// 构建 VALUES 部分
 		var sb strings.Builder
-		sb.WriteString(`INSERT INTO api_keys (channel_id, key_index, api_key, key_strategy,
+		sb.WriteString(`INSERT INTO api_keys (channel_id, key_index, api_key, label, key_strategy,
 		                      cooldown_until, cooldown_duration_ms, created_at, updated_at) VALUES `)
 
-		args := make([]any, 0, len(batch)*8)
+		args := make([]any, 0, len(batch)*9)
 		for j, key := range batch {
 			if j > 0 {
 				sb.WriteString(",")
 			}
-			sb.WriteString("(?, ?, ?, ?, ?, ?, ?, ?)")
+			sb.WriteString("(?, ?, ?, ?, ?, ?, ?, ?, ?)")
 
 			strategy := key.KeyStrategy
 			if strategy == "" {
 				strategy = model.KeyStrategySequential
 			}
-			args = append(args, key.ChannelID, key.KeyIndex, key.APIKey, strategy,
+			args = append(args, key.ChannelID, key.KeyIndex, key.APIKey, key.Label, strategy,
 				key.CooldownUntil, key.CooldownDurationMs, nowUnix, nowUnix)
 		}
 
@@ -322,9 +324,9 @@ func (s *SQLStore) ImportChannelBatch(ctx context.Context, channels []*model.Cha
 
 		// 预编译API Key插入语句
 		keyStmt, err := tx.PrepareContext(ctx, `
-			INSERT INTO api_keys (channel_id, key_index, api_key, key_strategy,
+			INSERT INTO api_keys (channel_id, key_index, api_key, label, key_strategy,
 			                      cooldown_until, cooldown_duration_ms, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`)
 		if err != nil {
 			return fmt.Errorf("prepare api key statement: %w", err)
@@ -400,7 +402,7 @@ func (s *SQLStore) ImportChannelBatch(ctx context.Context, channels []*model.Cha
 				cwk.APIKeys[i].ChannelID = channelID
 				key := cwk.APIKeys[i]
 				_, err := keyStmt.ExecContext(ctx,
-					channelID, key.KeyIndex, key.APIKey, key.KeyStrategy,
+					channelID, key.KeyIndex, key.APIKey, key.Label, key.KeyStrategy,
 					key.CooldownUntil, key.CooldownDurationMs, nowUnix, nowUnix)
 				if err != nil {
 					return fmt.Errorf("insert api key %d for channel %d: %w", key.KeyIndex, channelID, err)
@@ -432,7 +434,7 @@ func (s *SQLStore) ImportChannelBatch(ctx context.Context, channels []*model.Cha
 // 返回: map[channelID][]*APIKey
 func (s *SQLStore) GetAllAPIKeys(ctx context.Context) (map[int64][]*model.APIKey, error) {
 	query := `
-		SELECT id, channel_id, key_index, api_key, key_strategy,
+		SELECT id, channel_id, key_index, api_key, label, key_strategy,
 		       cooldown_until, cooldown_duration_ms, created_at, updated_at
 		FROM api_keys
 		ORDER BY channel_id ASC, key_index ASC
@@ -453,6 +455,7 @@ func (s *SQLStore) GetAllAPIKeys(ctx context.Context) (map[int64][]*model.APIKey
 			&key.ChannelID,
 			&key.KeyIndex,
 			&key.APIKey,
+			&key.Label,
 			&key.KeyStrategy,
 			&key.CooldownUntil,
 			&key.CooldownDurationMs,

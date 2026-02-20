@@ -19,6 +19,71 @@ import (
 // ==================== 渠道CRUD管理 ====================
 // 从admin.go拆分渠道CRUD,遵循SRP原则
 
+// APIKeyInput API Key输入格式（支持label）
+type APIKeyInput struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+}
+
+// parseAPIKeysWithLabels 解析API Keys（支持新旧格式）
+// 新格式：[{"key": "sk-xxx", "label": "公开Key"}]
+// 旧格式：["sk-xxx", "sk-yyy"] 或 "sk-xxx,sk-yyy"
+func parseAPIKeysWithLabels(apiKeyJSON string) (keys []string, labels []string, err error) {
+	apiKeyJSON = strings.TrimSpace(apiKeyJSON)
+	if apiKeyJSON == "" {
+		return nil, nil, fmt.Errorf("api_key cannot be empty")
+	}
+
+	// 尝试解析为新格式（对象数组）
+	var keysInput []APIKeyInput
+	if err := sonic.UnmarshalString(apiKeyJSON, &keysInput); err == nil && len(keysInput) > 0 {
+		// 新格式成功解析
+		keys = make([]string, 0, len(keysInput))
+		labels = make([]string, 0, len(keysInput))
+		for _, ki := range keysInput {
+			key := strings.TrimSpace(ki.Key)
+			if key == "" {
+				return nil, nil, fmt.Errorf("api_key cannot be empty")
+			}
+			label := strings.TrimSpace(ki.Label)
+			if len(label) > 128 {
+				return nil, nil, fmt.Errorf("label too long (max 128 characters)")
+			}
+			if strings.ContainsAny(label, "\x00\r\n\t") {
+				return nil, nil, fmt.Errorf("label contains invalid characters")
+			}
+			keys = append(keys, key)
+			labels = append(labels, label)
+		}
+		return keys, labels, nil
+	}
+
+	// 尝试解析为旧格式（字符串数组）
+	var keysArray []string
+	if err := sonic.UnmarshalString(apiKeyJSON, &keysArray); err == nil && len(keysArray) > 0 {
+		// 旧格式：字符串数组
+		keys = make([]string, 0, len(keysArray))
+		labels = make([]string, len(keysArray)) // 空label
+		for _, k := range keysArray {
+			k = strings.TrimSpace(k)
+			if k != "" {
+				keys = append(keys, k)
+			}
+		}
+		if len(keys) == 0 {
+			return nil, nil, fmt.Errorf("no valid api keys")
+		}
+		return keys, labels, nil
+	}
+
+	// 兜底：尝试作为逗号分隔的字符串解析（最旧格式）
+	parsedKeys := util.ParseAPIKeys(apiKeyJSON)
+	if len(parsedKeys) == 0 {
+		return nil, nil, fmt.Errorf("invalid api_keys format")
+	}
+	return parsedKeys, make([]string, len(parsedKeys)), nil
+}
+
 // HandleChannels 处理渠道列表请求
 func (s *Server) HandleChannels(c *gin.Context) {
 	switch c.Request.Method {
@@ -125,7 +190,10 @@ func (s *Server) handleListChannels(c *gin.Context) {
 		channelKeyCooldowns := allKeyCooldowns[cfg.ID]
 
 		for _, apiKey := range apiKeys {
-			keyInfo := KeyCooldownInfo{KeyIndex: apiKey.KeyIndex}
+			keyInfo := KeyCooldownInfo{
+				KeyIndex: apiKey.KeyIndex,
+				Label:    apiKey.Label,
+			}
 
 			// 检查是否在冷却中
 			if until, cooled := channelKeyCooldowns[apiKey.KeyIndex]; cooled && until.After(now) {
@@ -182,8 +250,13 @@ func (s *Server) handleCreateChannel(c *gin.Context) {
 		return
 	}
 
-	// 解析并创建API Keys
-	apiKeys := util.ParseAPIKeys(req.APIKey)
+	// 解析并创建API Keys（支持新旧格式）
+	apiKeys, labels, err := parseAPIKeysWithLabels(req.APIKey)
+	if err != nil {
+		RespondErrorMsg(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	keyStrategy := strings.TrimSpace(req.KeyStrategy)
 	if keyStrategy == "" {
 		keyStrategy = model.KeyStrategySequential // 默认策略
@@ -192,10 +265,15 @@ func (s *Server) handleCreateChannel(c *gin.Context) {
 	now := time.Now()
 	keysToCreate := make([]*model.APIKey, 0, len(apiKeys))
 	for i, key := range apiKeys {
+		label := ""
+		if i < len(labels) {
+			label = labels[i]
+		}
 		keysToCreate = append(keysToCreate, &model.APIKey{
 			ChannelID:   created.ID,
 			KeyIndex:    i,
 			APIKey:      key,
+			Label:       label,
 			KeyStrategy: keyStrategy,
 			CreatedAt:   model.JSONTime{Time: now},
 			UpdatedAt:   model.JSONTime{Time: now},
@@ -322,17 +400,31 @@ func (s *Server) handleUpdateChannel(c *gin.Context, id int64) {
 		oldKeys = []*model.APIKey{}
 	}
 
-	newKeys := util.ParseAPIKeys(req.APIKey)
+	newKeys, newLabels, err := parseAPIKeysWithLabels(req.APIKey)
+	if err != nil {
+		RespondErrorMsg(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	keyStrategy := strings.TrimSpace(req.KeyStrategy)
 	if keyStrategy == "" {
 		keyStrategy = model.KeyStrategySequential
 	}
 
-	// 比较Key数量和内容是否变化
+	// 比较Key数量、内容和label是否变化
 	keyChanged := len(oldKeys) != len(newKeys)
 	if !keyChanged {
 		for i, oldKey := range oldKeys {
 			if i >= len(newKeys) || oldKey.APIKey != newKeys[i] {
+				keyChanged = true
+				break
+			}
+			// 检查label是否变化
+			newLabel := ""
+			if i < len(newLabels) {
+				newLabel = newLabels[i]
+			}
+			if oldKey.Label != newLabel {
 				keyChanged = true
 				break
 			}
@@ -365,10 +457,15 @@ func (s *Server) handleUpdateChannel(c *gin.Context, id int64) {
 		now := time.Now()
 		apiKeys := make([]*model.APIKey, 0, len(newKeys))
 		for i, key := range newKeys {
+			label := ""
+			if i < len(newLabels) {
+				label = newLabels[i]
+			}
 			apiKeys = append(apiKeys, &model.APIKey{
 				ChannelID:   id,
 				KeyIndex:    i,
 				APIKey:      key,
+				Label:       label,
 				KeyStrategy: keyStrategy,
 				CreatedAt:   model.JSONTime{Time: now},
 				UpdatedAt:   model.JSONTime{Time: now},

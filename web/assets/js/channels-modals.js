@@ -26,7 +26,7 @@ function showAddModal() {
   if (modelFilterInput) modelFilterInput.value = '';
   renderRedirectTable();
 
-  inlineKeyTableData = [''];
+  inlineKeyTableData = [{ key: '', label: '' }];
   inlineKeyVisible = true;
   document.getElementById('inlineEyeIcon').style.display = 'none';
   document.getElementById('inlineEyeOffIcon').style.display = 'block';
@@ -63,9 +63,18 @@ async function editChannel(id) {
     };
   });
 
-  inlineKeyTableData = apiKeys.map(k => k.api_key || k);
+  // 支持新格式（对象）和旧格式（字符串）
+  inlineKeyTableData = apiKeys.map(k => {
+    if (typeof k === 'string') {
+      return { key: k, label: '' };
+    } else if (k.api_key) {
+      return { key: k.api_key, label: k.label || '' };
+    } else {
+      return { key: k, label: '' };
+    }
+  });
   if (inlineKeyTableData.length === 0) {
-    inlineKeyTableData = [''];
+    inlineKeyTableData = [{ key: '', label: '' }];
     currentChannelKeyCooldowns = [];
   }
 
@@ -137,13 +146,23 @@ function closeModal() {
 async function saveChannel(event) {
   event.preventDefault();
 
-  const validKeys = inlineKeyTableData.filter(k => k && k.trim());
-  if (validKeys.length === 0) {
+  // 构建API Keys数据（新格式：[{key, label}, ...]）
+  const apiKeys = inlineKeyTableData
+    .map(item => {
+      const key = typeof item === 'string' ? item : (item?.key || '');
+      const label = typeof item === 'object' ? (item?.label || '') : '';
+      return { key: key.trim(), label: label.trim() };
+    })
+    .filter(item => item.key); // 过滤掉空的 key
+
+  if (apiKeys.length === 0) {
     alert(window.t('channels.atLeastOneKey'));
     return;
   }
 
-  document.getElementById('channelApiKey').value = validKeys.join(',');
+  // 构建 JSON 格式用于发送到后端
+  const apiKeysJSON = JSON.stringify(apiKeys);
+  document.getElementById('channelApiKey').value = apiKeysJSON;
 
   // 构建模型配置（新格式：models 数组）
   const models = redirectTableData
@@ -193,7 +212,7 @@ async function saveChannel(event) {
   const formData = {
     name: document.getElementById('channelName').value.trim(),
     url: document.getElementById('channelUrl').value.trim(),
-    api_key: validKeys.join(','),
+    api_key: apiKeysJSON,
     channel_type: channelType,
     key_strategy: keyStrategy,
     priority: parseInt(document.getElementById('channelPriority').value) || 0,
@@ -676,9 +695,18 @@ async function copyChannel(id, name) {
     console.error('Failed to fetch API Keys', e);
   }
 
-  inlineKeyTableData = apiKeys.map(k => k.api_key || k);
+  // 支持新格式（对象）和旧格式（字符串）
+  inlineKeyTableData = apiKeys.map(k => {
+    if (typeof k === 'string') {
+      return { key: k, label: '' };
+    } else if (k.api_key) {
+      return { key: k.api_key, label: k.label || '' };
+    } else {
+      return { key: k, label: '' };
+    }
+  });
   if (inlineKeyTableData.length === 0) {
-    inlineKeyTableData = [''];
+    inlineKeyTableData = [{ key: '', label: '' }];
   }
 
   inlineKeyVisible = true;
@@ -1300,7 +1328,10 @@ async function fetchModelsFromAPI() {
   const channelUrl = document.getElementById('channelUrl').value.trim();
   const channelType = document.querySelector('input[name="channelType"]:checked')?.value || 'anthropic';
   const firstValidKey = inlineKeyTableData
-    .map(key => (key || '').trim())
+    .map(item => {
+      const key = typeof item === 'string' ? item : (item?.key || '');
+      return (key || '').trim();
+    })
     .filter(Boolean)[0];
 
   // 读取格式转换配置（新系统）

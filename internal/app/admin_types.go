@@ -177,6 +177,7 @@ func (cr *ChannelRequest) ToConfig() *model.Config {
 // KeyCooldownInfo Key级别冷却信息
 type KeyCooldownInfo struct {
 	KeyIndex            int        `json:"key_index"`
+	Label               string     `json:"label"`
 	CooldownUntil       *time.Time `json:"cooldown_until,omitempty"`
 	CooldownRemainingMS int64      `json:"cooldown_remaining_ms,omitempty"`
 }

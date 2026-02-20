@@ -184,6 +184,7 @@ window.I18N_LOCALES['en'] = {
   'channels.batchDeleteKeysTitle': 'Batch delete selected Keys',
   'channels.deleteSelected': 'Delete Selected',
   'channels.tableApiKey': 'API Key',
+  'channels.tableLabel': 'Label',
   'channels.keyStatusAll': 'All',
   'channels.keyStatusNormal': 'Normal',
   'channels.keyStatusCooldown': 'Cooldown',

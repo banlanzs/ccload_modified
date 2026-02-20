@@ -33,7 +33,7 @@ function renderVirtualRows(tbody, visibleStart, visibleEnd, filteredIndices) {
 
   if (visibleStart > 0) {
     const topSpacer = document.createElement('tr');
-    topSpacer.innerHTML = `<td colspan="4" style="height: ${visibleStart * ROW_HEIGHT}px; padding: 0; border: none;"></td>`;
+    topSpacer.innerHTML = `<td colspan="5" style="height: ${visibleStart * ROW_HEIGHT}px; padding: 0; border: none;"></td>`;
     tbody.appendChild(topSpacer);
   }
 
@@ -46,7 +46,7 @@ function renderVirtualRows(tbody, visibleStart, visibleEnd, filteredIndices) {
   if (visibleEnd < filteredIndices.length) {
     const bottomSpacer = document.createElement('tr');
     const bottomHeight = (filteredIndices.length - visibleEnd) * ROW_HEIGHT;
-    bottomSpacer.innerHTML = `<td colspan="4" style="height: ${bottomHeight}px; padding: 0; border: none;"></td>`;
+    bottomSpacer.innerHTML = `<td colspan="5" style="height: ${bottomHeight}px; padding: 0; border: none;"></td>`;
     tbody.appendChild(bottomSpacer);
   }
 }
@@ -88,14 +88,19 @@ function buildActionsHtml(index) {
  * @returns {HTMLElement} 表格行元素
  */
 function createKeyRow(index) {
-  const key = inlineKeyTableData[index];
+  const keyData = inlineKeyTableData[index];
   const isSelected = selectedKeyIndices.has(index);
+
+  // 兼容旧格式（字符串）和新格式（对象）
+  const key = typeof keyData === 'string' ? keyData : (keyData?.key || '');
+  const label = typeof keyData === 'object' ? (keyData?.label || '') : '';
 
   // 准备模板数据
   const rowData = {
     index: index,
     displayIndex: index + 1,
-    key: key || '',
+    key: key,
+    label: label,
     inputType: inlineKeyVisible ? 'text' : 'password',
     cooldownHtml: buildCooldownHtml(index),
     actionsHtml: buildActionsHtml(index)
@@ -282,6 +287,14 @@ function initKeyTableEventDelegation() {
     if (input) {
       const index = parseInt(input.dataset.index);
       updateInlineKey(index, input.value);
+      return;
+    }
+
+    // 处理 label 输入框变更
+    const labelInput = e.target.closest('.inline-label-input');
+    if (labelInput) {
+      const index = parseInt(labelInput.dataset.index);
+      updateInlineLabel(index, labelInput.value);
     }
   });
 
@@ -294,6 +307,15 @@ function initKeyTableEventDelegation() {
       // Ensure drag doesn't interfere with typing
       input.closest('tr').setAttribute('draggable', 'false');
     }
+
+    // 处理 label 输入框焦点样式
+    const labelInput = e.target.closest('.inline-label-input');
+    if (labelInput) {
+      labelInput.style.borderColor = 'var(--primary-500)';
+      labelInput.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)';
+      // Ensure drag doesn't interfere with typing
+      labelInput.closest('tr').setAttribute('draggable', 'false');
+    }
   });
 
   tbody.addEventListener('focusout', (e) => {
@@ -302,6 +324,14 @@ function initKeyTableEventDelegation() {
       input.style.borderColor = 'var(--neutral-300)';
       input.style.boxShadow = 'none';
       input.closest('tr').setAttribute('draggable', 'true');
+    }
+
+    // 处理 label 输入框失去焦点样式
+    const labelInput = e.target.closest('.inline-label-input');
+    if (labelInput) {
+      labelInput.style.borderColor = 'var(--neutral-300)';
+      labelInput.style.boxShadow = 'none';
+      labelInput.closest('tr').setAttribute('draggable', 'true');
     }
   });
 
@@ -345,7 +375,7 @@ function renderInlineKeyTable() {
   keyCount.textContent = inlineKeyTableData.length;
 
   const hiddenInput = document.getElementById('channelApiKey');
-  hiddenInput.value = inlineKeyTableData.join(',');
+  hiddenInput.value = inlineKeyTableData.map(k => typeof k === 'string' ? k : k.key).join(',');
 
   // 初始化事件委托
   initKeyTableEventDelegation();
@@ -430,15 +460,38 @@ function toggleInlineKeyVisibility() {
 
 function updateInlineKey(index, value) {
   const nextValue = value.trim();
-  if (inlineKeyTableData[index] === nextValue) return;
+  const keyData = inlineKeyTableData[index];
 
-  inlineKeyTableData[index] = nextValue;
+  // 兼容旧格式（字符串）和新格式（对象）
+  if (typeof keyData === 'string') {
+    if (keyData === nextValue) return;
+    inlineKeyTableData[index] = nextValue;
+  } else {
+    if (keyData.key === nextValue) return;
+    keyData.key = nextValue;
+  }
+
   markChannelFormDirty();
 
   const hiddenInput = document.getElementById('channelApiKey');
   if (hiddenInput) {
-    hiddenInput.value = inlineKeyTableData.join(',');
+    hiddenInput.value = inlineKeyTableData.map(k => typeof k === 'string' ? k : k.key).join(',');
   }
+}
+
+function updateInlineLabel(index, value) {
+  const labelValue = value.trim();
+  const keyData = inlineKeyTableData[index];
+
+  // 确保数据是新格式（对象）
+  if (typeof keyData === 'string') {
+    inlineKeyTableData[index] = { key: keyData, label: labelValue };
+  } else {
+    if (keyData.label === labelValue) return;
+    keyData.label = labelValue;
+  }
+
+  markChannelFormDirty();
 }
 
 async function testSingleKey(keyIndex, testButton) {
@@ -457,7 +510,8 @@ async function testSingleKey(keyIndex, testButton) {
   }
 
   const firstModel = models[0];
-  const apiKey = inlineKeyTableData[keyIndex];
+  const keyData = inlineKeyTableData[keyIndex];
+  const apiKey = typeof keyData === 'string' ? keyData : (keyData?.key || '');
 
   if (!apiKey || !apiKey.trim()) {
     alert(window.t('channels.emptyKeyCannotTest'));
@@ -514,9 +568,18 @@ async function refreshKeyCooldownStatus() {
   try {
     const apiKeys = (await fetchDataWithAuth(`/admin/channels/${editingChannelId}/keys`)) || [];
 
-    inlineKeyTableData = apiKeys.map(k => k.api_key || k);
+    // 支持新格式（对象）和旧格式（字符串）
+    inlineKeyTableData = apiKeys.map(k => {
+      if (typeof k === 'string') {
+        return { key: k, label: '' };
+      } else if (k.api_key) {
+        return { key: k.api_key, label: k.label || '' };
+      } else {
+        return { key: k, label: '' };
+      }
+    });
     if (inlineKeyTableData.length === 0) {
-      inlineKeyTableData = [''];
+      inlineKeyTableData = [{ key: '', label: '' }];
     }
 
     const now = Date.now();
@@ -551,7 +614,8 @@ async function refreshKeyCooldownStatus() {
  * @param {number} index - Key在数据数组中的索引
  */
 function copyKeyToClipboard(index) {
-  const keyText = inlineKeyTableData[index];
+  const keyData = inlineKeyTableData[index];
+  const keyText = typeof keyData === 'string' ? keyData : (keyData?.key || '');
   if (!keyText) return;
 
   window.copyToClipboard(keyText).then(() => {
@@ -737,12 +801,12 @@ function confirmInlineKeyImport() {
     return;
   }
 
-  const existingKeys = new Set(inlineKeyTableData);
+  const existingKeys = new Set(inlineKeyTableData.map(k => typeof k === 'string' ? k : k.key));
   let addedCount = 0;
 
   newKeys.forEach(key => {
     if (!existingKeys.has(key)) {
-      inlineKeyTableData.push(key);
+      inlineKeyTableData.push({ key: key, label: '' });
       existingKeys.add(key);
       addedCount++;
     }
@@ -849,7 +913,10 @@ function updateExportPreview() {
 function getSelectedKeys() {
   return Array.from(selectedKeyIndices)
     .sort((a, b) => a - b)
-    .map(index => inlineKeyTableData[index])
+    .map(index => {
+      const keyData = inlineKeyTableData[index];
+      return typeof keyData === 'string' ? keyData : (keyData?.key || '');
+    })
     .filter(key => key); // 过滤掉空值
 }
 

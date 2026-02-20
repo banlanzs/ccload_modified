@@ -29,6 +29,7 @@ var sqliteMigratableTables = map[string]bool{
 	"auth_tokens":       true,
 	"channel_models":    true,
 	"channels":          true,
+	"api_keys":          true, // 添加label字段迁移支持
 	"schema_migrations": true,
 }
 
@@ -91,6 +92,10 @@ func migrate(ctx context.Context, db *sql.DB, dialect Dialect) error {
 		if tb.Name() == "api_keys" {
 			if err := ensureAPIKeysAPIKeyLength(ctx, db, dialect); err != nil {
 				return fmt.Errorf("migrate api_keys api_key column: %w", err)
+			}
+			// 增量迁移：确保api_keys表有label字段（2026-02新增）
+			if err := ensureAPIKeysLabel(ctx, db, dialect); err != nil {
+				return fmt.Errorf("migrate api_keys label column: %w", err)
 			}
 		}
 
@@ -1216,5 +1221,18 @@ func ensureChannelsConversionColumns(ctx context.Context, db *sql.DB, dialect Di
 		{name: "enable_conversion", definition: "INTEGER NOT NULL DEFAULT 0"},
 		{name: "conversion_source_format", definition: "TEXT NOT NULL DEFAULT ''"},
 		{name: "conversion_target_format", definition: "TEXT NOT NULL DEFAULT ''"},
+	})
+}
+
+// ensureAPIKeysLabel 确保api_keys表有label字段（2026-02新增）
+func ensureAPIKeysLabel(ctx context.Context, db *sql.DB, dialect Dialect) error {
+	if dialect == DialectMySQL {
+		return ensureMySQLColumns(ctx, db, "api_keys", []mysqlColumnDef{
+			{name: "label", definition: "VARCHAR(128) NOT NULL DEFAULT ''"},
+		})
+	}
+
+	return ensureSQLiteColumns(ctx, db, "api_keys", []sqliteColumnDef{
+		{name: "label", definition: "TEXT NOT NULL DEFAULT ''"},
 	})
 }

@@ -294,6 +294,7 @@
                     </div>
                   </th>
                   <th data-i18n="channels.tableApiKey">API Key</th>
+                  <th style="width: 150px;" data-i18n="channels.tableLabel">标签</th>
                   <th style="width: 200px;">
                     <select
                       id="keyStatusFilter"
@@ -789,6 +790,17 @@
           style="width: 100%; padding: 5px 8px; border: 1px solid var(--neutral-300); border-radius: 6px; font-family: 'Monaco', 'Menlo', 'Courier New', monospace; font-size: 13px; transition: all 0.2s;"
         >
       </td>
+      <td style="padding: 6px 10px;">
+        <input
+          type="text"
+          value="{{label}}"
+          class="inline-label-input"
+          data-index="{{index}}"
+          placeholder="公开/个人"
+          maxlength="128"
+          style="width: 100%; padding: 5px 8px; border: 1px solid var(--neutral-300); border-radius: 6px; font-size: 13px; transition: all 0.2s;"
+        >
+      </td>
       <td style="padding: 6px 10px;">{{{cooldownHtml}}}</td>
       <td style="padding: 6px 10px; text-align: center;">{{{actionsHtml}}}</td>
     </tr>
@@ -796,7 +808,7 @@
 
   <template id="tpl-key-empty">
     <tr>
-      <td colspan="4" style="padding: 30px; text-align: center; color: var(--neutral-500); font-size: 14px;">
+      <td colspan="5" style="padding: 30px; text-align: center; color: var(--neutral-500); font-size: 14px;">
         {{message}}
       </td>
     </tr>

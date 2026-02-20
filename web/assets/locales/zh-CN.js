@@ -184,6 +184,7 @@ window.I18N_LOCALES['zh-CN'] = {
   'channels.batchDeleteKeysTitle': '批量删除选中的Keys',
   'channels.deleteSelected': '删除选中',
   'channels.tableApiKey': 'API Key',
+  'channels.tableLabel': '标签',
   'channels.keyStatusAll': '全部',
   'channels.keyStatusNormal': '正常',
   'channels.keyStatusCooldown': '冷却中',
