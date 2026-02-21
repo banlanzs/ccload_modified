@@ -218,13 +218,8 @@
       versionEl.textContent = versionInfo.version;
     }
     if (badgeEl) {
-      if (versionInfo.has_update && versionInfo.latest_version) {
-        badgeEl.title = t('version.hasUpdate', { version: versionInfo.latest_version });
-        badgeEl.classList.add('has-update');
-      } else {
-        badgeEl.title = t('version.checkUpdate');
-        badgeEl.classList.remove('has-update');
-      }
+      badgeEl.title = t('version.checkUpdate');
+      badgeEl.classList.remove('has-update');
     }
   }
 

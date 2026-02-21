@@ -333,15 +333,11 @@ func (s *Server) HandleGetChannelTypes(c *gin.Context) {
 
 // HandlePublicVersion 获取当前版本信息(公开端点,前端显示版本)
 // GET /public/version
-// 版本信息变化频率极低（后台每4小时检查一次），缓存5分钟
+// 版本信息变化频率极低，缓存5分钟
 func (s *Server) HandlePublicVersion(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age=300")
-	hasUpdate, latestVersion, releaseURL := version.GetUpdateInfo()
 	RespondJSON(c, http.StatusOK, gin.H{
-		"version":        version.Version,
-		"has_update":     hasUpdate,
-		"latest_version": latestVersion,
-		"release_url":    releaseURL,
+		"version": version.Version,
 	})
 }
 

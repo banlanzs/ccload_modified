@@ -1,0 +1,3 @@
+# Keep local no-update policy during merges/rebases
+internal/version/checker.go merge=ours
+internal/version/checker_additional_test.go merge=ours
