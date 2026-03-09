@@ -55,6 +55,8 @@ func migrate(ctx context.Context, db *sql.DB, dialect Dialect) error {
 		schema.DefineSystemSettingsTable,
 		schema.DefineAdminSessionsTable,
 		schema.DefineLogsTable,
+		schema.DefineVirtualModelsTable,      // 虚拟模型表
+		schema.DefineModelAssociationsTable,  // 模型关联规则表
 	}
 
 	// 创建表和索引

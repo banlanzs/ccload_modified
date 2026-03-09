@@ -95,6 +95,23 @@ type Store interface {
 	CleanExpiredSessions(ctx context.Context) error
 	LoadAllSessions(ctx context.Context) (map[string]time.Time, error)
 
+	// === Virtual Model Management ===
+	ListVirtualModels(ctx context.Context) ([]*model.VirtualModel, error)
+	GetVirtualModel(ctx context.Context, id int64) (*model.VirtualModel, error)
+	GetVirtualModelByName(ctx context.Context, name string) (*model.VirtualModel, error)
+	CreateVirtualModel(ctx context.Context, vm *model.VirtualModel) (*model.VirtualModel, error)
+	UpdateVirtualModel(ctx context.Context, id int64, vm *model.VirtualModel) error
+	DeleteVirtualModel(ctx context.Context, id int64) error
+
+	// === Model Association Management ===
+	ListModelAssociations(ctx context.Context, virtualModelID int64) ([]*model.ModelAssociation, error)
+	ListAllModelAssociations(ctx context.Context) ([]*model.ModelAssociation, error)
+	GetModelAssociation(ctx context.Context, id int64) (*model.ModelAssociation, error)
+	CreateModelAssociation(ctx context.Context, ma *model.ModelAssociation) (*model.ModelAssociation, error)
+	UpdateModelAssociation(ctx context.Context, id int64, ma *model.ModelAssociation) error
+	DeleteModelAssociation(ctx context.Context, id int64) error
+	ListModelAssociationsWithDetails(ctx context.Context, virtualModelID int64) ([]*model.ModelAssociationWithDetails, error)
+
 	// === Batch Operations ===
 	ImportChannelBatch(ctx context.Context, channels []*model.ChannelWithKeys) (created, updated int, err error)
 

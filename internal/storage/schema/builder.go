@@ -85,7 +85,12 @@ func mysqlToSQLite(mysqlCol string) string {
 	col = replaceVarchar(col)
 
 	// 索引约束简化（MySQL的UNIQUE KEY → SQLite的UNIQUE）
-	col = strings.ReplaceAll(col, "UNIQUE KEY uk_channel_key", "UNIQUE")
+	// 处理所有 UNIQUE KEY 约束，不仅仅是特定名称
+	if strings.Contains(col, "UNIQUE KEY") {
+		// 提取约束名和列定义：UNIQUE KEY uk_name (col1, col2) → UNIQUE (col1, col2)
+		re := regexp.MustCompile(`UNIQUE KEY \w+ (\([^)]+\))`)
+		col = re.ReplaceAllString(col, "UNIQUE $1")
+	}
 
 	return col
 }

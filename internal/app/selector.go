@@ -39,6 +39,29 @@ func (s *Server) selectCandidatesByChannelType(ctx context.Context, channelType 
 func (s *Server) selectCandidatesByModelAndType(ctx context.Context, model string, channelType string) ([]*modelpkg.Config, error) {
 	normalizedType := util.NormalizeChannelType(channelType)
 
+	// 优先尝试虚拟模型解析
+	if s.modelResolver != nil && model != "" && model != "*" {
+		resolvedCandidates, err := s.modelResolver.Resolve(ctx, model, channelType)
+		if err == nil && len(resolvedCandidates) > 0 {
+			configs := make([]*modelpkg.Config, 0, len(resolvedCandidates))
+			for _, cand := range resolvedCandidates {
+				if cand.Config != nil {
+					configs = append(configs, cand.Config)
+				}
+			}
+			if len(configs) > 0 {
+				filtered, filterErr := s.filterCooldownChannelsStrict(ctx, configs)
+				if filterErr != nil {
+					return nil, filterErr
+				}
+				if len(filtered) > 0 {
+					return filtered, nil
+				}
+				return s.filterCooldownChannels(ctx, configs)
+			}
+		}
+	}
+
 	// 类型过滤辅助函数
 	filterByType := func(channels []*modelpkg.Config) []*modelpkg.Config {
 		if channelType == "" {

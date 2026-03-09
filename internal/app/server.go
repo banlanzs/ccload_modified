@@ -38,6 +38,8 @@ type Server struct {
 	store           storage.Store
 	channelCache    *storage.ChannelCache // 高性能渠道缓存层
 	keySelector     *KeySelector          // Key选择器（多Key支持）
+	modelResolver   *ModelResolver        // 虚拟模型解析器
+
 	cooldownManager *cooldown.Manager     // 统一冷却管理器
 	healthCache     *HealthCache          // 渠道健康度缓存
 	costCache       *CostCache            // 渠道每日成本缓存
@@ -194,6 +196,9 @@ func NewServer(store storage.Store) *Server {
 
 	// 初始化URL选择器（多URL场景：EWMA延迟追踪+URL级冷却）
 	s.urlSelector = NewURLSelector()
+
+	// 初始化虚拟模型解析器
+	s.modelResolver = NewModelResolver(store)
 
 	// 初始化健康度缓存（启动时读取配置，修改后重启生效）
 	defaultHealthCfg := model.DefaultHealthScoreConfig()
@@ -532,6 +537,22 @@ func (s *Server) SetupRoutes(r *gin.Engine) {
 		admin.POST("/auth-tokens", s.HandleCreateAuthToken)
 		admin.PUT("/auth-tokens/:id", s.HandleUpdateAuthToken)
 		admin.DELETE("/auth-tokens/:id", s.HandleDeleteAuthToken)
+
+		// 虚拟模型管理
+		admin.GET("/virtual-models", s.HandleListVirtualModels)
+		admin.POST("/virtual-models", s.HandleCreateVirtualModel)
+		admin.GET("/virtual-models/:id", s.HandleGetVirtualModel)
+		admin.PUT("/virtual-models/:id", s.HandleUpdateVirtualModel)
+		admin.DELETE("/virtual-models/:id", s.HandleDeleteVirtualModel)
+
+		// 模型关联规则管理
+		admin.GET("/model-associations", s.HandleListModelAssociations)
+		admin.POST("/model-associations", s.HandleCreateModelAssociation)
+		admin.GET("/model-associations/:id", s.HandleGetModelAssociation)
+		admin.PUT("/model-associations/:id", s.HandleUpdateModelAssociation)
+		admin.DELETE("/model-associations/:id", s.HandleDeleteModelAssociation)
+		admin.POST("/model-associations/validate", s.HandleValidateModelAssociations)
+		admin.POST("/model-associations/preview", s.HandlePreviewModelAssociations)
 
 		// 系统配置管理
 		admin.GET("/settings", s.AdminListSettings)

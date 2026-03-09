@@ -144,3 +144,38 @@ func DefineLogsTable() *TableBuilder {
 		Index("idx_logs_time_auth_token", "time, auth_token_id"). // 按时间+令牌查询
 		Index("idx_logs_time_actual_model", "time, actual_model") // 按时间+实际模型查询
 }
+
+// DefineVirtualModelsTable 定义virtual_models表结构
+func DefineVirtualModelsTable() *TableBuilder {
+	return NewTable("virtual_models").
+		Column("id INT PRIMARY KEY AUTO_INCREMENT").
+		Column("name VARCHAR(128) NOT NULL UNIQUE").
+		Column("alias VARCHAR(128) NOT NULL DEFAULT ''").
+		Column("description TEXT NOT NULL DEFAULT ''").
+		Column("enabled TINYINT NOT NULL DEFAULT 1").
+		Column("default_fallback VARCHAR(256) NOT NULL DEFAULT ''").
+		Column("created_at BIGINT NOT NULL").
+		Column("updated_at BIGINT NOT NULL").
+		Index("idx_virtual_models_enabled", "enabled").
+		Index("idx_virtual_models_name", "name")
+}
+
+// DefineModelAssociationsTable 定义model_associations表结构
+func DefineModelAssociationsTable() *TableBuilder {
+	return NewTable("model_associations").
+		Column("id INT PRIMARY KEY AUTO_INCREMENT").
+		Column("virtual_model_id INT NOT NULL").
+		Column("channel_id INT NOT NULL").
+		Column("match_type VARCHAR(32) NOT NULL").
+		Column("pattern VARCHAR(256) NOT NULL").
+		Column("priority INT NOT NULL DEFAULT 0").
+		Column("enabled TINYINT NOT NULL DEFAULT 1").
+		Column("created_at BIGINT NOT NULL").
+		Column("updated_at BIGINT NOT NULL").
+		Column("FOREIGN KEY (virtual_model_id) REFERENCES virtual_models(id) ON DELETE CASCADE").
+		Column("FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE").
+		Column("UNIQUE KEY uk_virtual_channel_match_pattern (virtual_model_id, channel_id, match_type, pattern)").
+		Index("idx_model_associations_virtual_model", "virtual_model_id").
+		Index("idx_model_associations_enabled", "enabled").
+		Index("idx_model_associations_priority", "priority DESC")
+}

@@ -669,6 +669,114 @@ func (h *HybridStore) ImportChannelBatch(ctx context.Context, channels []*model.
 	return created, updated, nil
 }
 
+// === Virtual Model Management ===
+
+func (h *HybridStore) ListVirtualModels(ctx context.Context) ([]*model.VirtualModel, error) {
+	return h.sqlite.ListVirtualModels(ctx)
+}
+
+func (h *HybridStore) GetVirtualModel(ctx context.Context, id int64) (*model.VirtualModel, error) {
+	return h.sqlite.GetVirtualModel(ctx, id)
+}
+
+func (h *HybridStore) GetVirtualModelByName(ctx context.Context, name string) (*model.VirtualModel, error) {
+	return h.sqlite.GetVirtualModelByName(ctx, name)
+}
+
+func (h *HybridStore) CreateVirtualModel(ctx context.Context, vm *model.VirtualModel) (*model.VirtualModel, error) {
+	result, err := h.mysql.CreateVirtualModel(ctx, vm)
+	if err != nil {
+		return nil, err
+	}
+
+	h.syncToSQLite("CreateVirtualModel", func() error {
+		_, err := h.sqlite.CreateVirtualModel(ctx, result)
+		return err
+	})
+
+	return result, nil
+}
+
+func (h *HybridStore) UpdateVirtualModel(ctx context.Context, id int64, vm *model.VirtualModel) error {
+	if err := h.mysql.UpdateVirtualModel(ctx, id, vm); err != nil {
+		return err
+	}
+
+	h.syncToSQLite("UpdateVirtualModel", func() error {
+		return h.sqlite.UpdateVirtualModel(ctx, id, vm)
+	})
+
+	return nil
+}
+
+func (h *HybridStore) DeleteVirtualModel(ctx context.Context, id int64) error {
+	if err := h.mysql.DeleteVirtualModel(ctx, id); err != nil {
+		return err
+	}
+
+	h.syncToSQLite("DeleteVirtualModel", func() error {
+		return h.sqlite.DeleteVirtualModel(ctx, id)
+	})
+
+	return nil
+}
+
+// === Model Association Management ===
+
+func (h *HybridStore) ListModelAssociations(ctx context.Context, virtualModelID int64) ([]*model.ModelAssociation, error) {
+	return h.sqlite.ListModelAssociations(ctx, virtualModelID)
+}
+
+func (h *HybridStore) ListAllModelAssociations(ctx context.Context) ([]*model.ModelAssociation, error) {
+	return h.sqlite.ListAllModelAssociations(ctx)
+}
+
+func (h *HybridStore) GetModelAssociation(ctx context.Context, id int64) (*model.ModelAssociation, error) {
+	return h.sqlite.GetModelAssociation(ctx, id)
+}
+
+func (h *HybridStore) CreateModelAssociation(ctx context.Context, ma *model.ModelAssociation) (*model.ModelAssociation, error) {
+	result, err := h.mysql.CreateModelAssociation(ctx, ma)
+	if err != nil {
+		return nil, err
+	}
+
+	h.syncToSQLite("CreateModelAssociation", func() error {
+		_, err := h.sqlite.CreateModelAssociation(ctx, result)
+		return err
+	})
+
+	return result, nil
+}
+
+func (h *HybridStore) UpdateModelAssociation(ctx context.Context, id int64, ma *model.ModelAssociation) error {
+	if err := h.mysql.UpdateModelAssociation(ctx, id, ma); err != nil {
+		return err
+	}
+
+	h.syncToSQLite("UpdateModelAssociation", func() error {
+		return h.sqlite.UpdateModelAssociation(ctx, id, ma)
+	})
+
+	return nil
+}
+
+func (h *HybridStore) DeleteModelAssociation(ctx context.Context, id int64) error {
+	if err := h.mysql.DeleteModelAssociation(ctx, id); err != nil {
+		return err
+	}
+
+	h.syncToSQLite("DeleteModelAssociation", func() error {
+		return h.sqlite.DeleteModelAssociation(ctx, id)
+	})
+
+	return nil
+}
+
+func (h *HybridStore) ListModelAssociationsWithDetails(ctx context.Context, virtualModelID int64) ([]*model.ModelAssociationWithDetails, error) {
+	return h.sqlite.ListModelAssociationsWithDetails(ctx, virtualModelID)
+}
+
 // === Lifecycle ===
 
 func (h *HybridStore) Ping(ctx context.Context) error {

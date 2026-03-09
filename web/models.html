@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="/web/favicon.ico">
+  <link rel="apple-touch-icon" href="/web/apple-touch-icon.png">
+  <link rel="manifest" href="/web/manifest.json">
+  <meta name="theme-color" content="#3b82f6">
+  <title data-i18n="models.title">模型管理 - Claude Code & Codex Proxy</title>
+  <link rel="stylesheet" href="/web/assets/css/styles.css?v=__VERSION__">
+  <link rel="stylesheet" href="/web/assets/css/models.css?v=__VERSION__">
+  <script defer src="/web/assets/locales/zh-CN.js?v=__VERSION__"></script>
+  <script defer src="/web/assets/locales/en.js?v=__VERSION__"></script>
+  <script defer src="/web/assets/js/i18n.js?v=__VERSION__"></script>
+  <script defer src="/web/assets/js/ui.js?v=__VERSION__"></script>
+  <script defer src="/web/assets/js/models.js?v=__VERSION__"></script>
+</head>
+
+<body>
+  <main class="container">
+    <div class="page-header">
+      <h1 data-i18n="models.pageTitle">模型管理</h1>
+      <div class="header-actions">
+        <button id="createVirtualModelBtn" class="btn btn-primary" data-i18n="models.createVirtualModel">创建虚拟模型</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 data-i18n="models.virtualModels">虚拟模型列表</h2>
+      </div>
+      <div class="card-body">
+        <div id="virtualModelsContainer"></div>
+      </div>
+    </div>
+  </main>
+
+  <div id="virtualModelModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="virtualModelModalTitle" data-i18n="models.createVirtualModel">创建虚拟模型</h3>
+        <button class="modal-close" data-close-modal="virtualModelModal" type="button">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="virtualModelForm">
+          <input type="hidden" id="virtualModelId" />
+
+          <div class="form-group">
+            <label for="virtualModelName" data-i18n="models.modelName">模型名称</label>
+            <input type="text" id="virtualModelName" class="form-control" required data-i18n-placeholder="models.modelNamePlaceholder" />
+            <small class="form-text" data-i18n="models.modelNameHelp">用户请求时使用的模型名称</small>
+          </div>
+
+          <div class="form-group">
+            <label for="virtualModelDescription" data-i18n="models.description">描述</label>
+            <textarea id="virtualModelDescription" class="form-control" rows="3" data-i18n-placeholder="models.descriptionPlaceholder"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="virtualModelEnabled" checked />
+              <span data-i18n="models.enabled">启用</span>
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="saveVirtualModelBtn" class="btn btn-primary" type="button" data-i18n="common.save">保存</button>
+        <button class="btn btn-secondary" type="button" data-close-modal="virtualModelModal" data-i18n="common.cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="associationsModal" class="modal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 id="associationsModalTitle" data-i18n="models.manageAssociations">管理关联规则</h3>
+        <button class="modal-close" data-close-modal="associationsModal" type="button">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="associations-header">
+          <button id="addAssociationBtn" class="btn btn-sm btn-primary" type="button" data-i18n="models.addAssociation">添加规则</button>
+          <button id="previewRoutingBtn" class="btn btn-sm btn-secondary" type="button" data-i18n="models.previewRouting">预览路由</button>
+        </div>
+        <div id="associationsContainer"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-close-modal="associationsModal" data-i18n="common.close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="associationEditModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="associationEditModalTitle" data-i18n="models.addAssociation">添加关联规则</h3>
+        <button class="modal-close" data-close-modal="associationEditModal" type="button">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="associationForm">
+          <input type="hidden" id="associationId" />
+
+          <div class="form-group">
+            <label for="associationChannelId" data-i18n="models.channel">渠道</label>
+            <select id="associationChannelId" class="form-control" required></select>
+          </div>
+
+          <div class="form-group">
+            <label for="associationMatchType" data-i18n="models.matchType">匹配类型</label>
+            <select id="associationMatchType" class="form-control" required>
+              <option value="exact" data-i18n="models.matchTypeExact">精确匹配</option>
+              <option value="prefix" data-i18n="models.matchTypePrefix">前缀匹配</option>
+              <option value="suffix" data-i18n="models.matchTypeSuffix">后缀匹配</option>
+              <option value="contains" data-i18n="models.matchTypeContains">包含匹配</option>
+              <option value="regex" data-i18n="models.matchTypeRegex">正则表达式</option>
+              <option value="wildcard" data-i18n="models.matchTypeWildcard">通配符</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="associationPattern" data-i18n="models.pattern">匹配模式</label>
+            <input type="text" id="associationPattern" class="form-control" required data-i18n-placeholder="models.patternPlaceholder" />
+            <small class="form-text" data-i18n="models.patternHelp">根据匹配类型填写相应的模式</small>
+          </div>
+
+          <div class="form-group">
+            <label for="associationPriority" data-i18n="models.priority">优先级</label>
+            <input type="number" id="associationPriority" class="form-control" value="100" min="0" max="1000" />
+            <small class="form-text" data-i18n="models.priorityHelp">数值越大优先级越高</small>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="associationEnabled" checked />
+              <span data-i18n="models.enabled">启用</span>
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="saveAssociationBtn" class="btn btn-primary" type="button" data-i18n="common.save">保存</button>
+        <button class="btn btn-secondary" type="button" data-close-modal="associationEditModal" data-i18n="common.cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="previewModal" class="modal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 data-i18n="models.routingPreview">路由预览</h3>
+        <button class="modal-close" data-close-modal="previewModal" type="button">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="previewModel" data-i18n="models.testModel">测试模型</label>
+          <input type="text" id="previewModel" class="form-control" data-i18n-placeholder="models.modelNamePlaceholder" />
+        </div>
+        <div class="form-group">
+          <label for="previewRequestType" data-i18n="models.requestType">请求类型</label>
+          <select id="previewRequestType" class="form-control">
+            <option value="" data-i18n="common.all">全部</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="gemini">Gemini</option>
+            <option value="codex">Codex</option>
+          </select>
+        </div>
+        <button id="runPreviewBtn" class="btn btn-primary" type="button" data-i18n="models.runPreview">运行预览</button>
+        <div id="previewResult" class="preview-result"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-close-modal="previewModal" data-i18n="common.close">关闭</button>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

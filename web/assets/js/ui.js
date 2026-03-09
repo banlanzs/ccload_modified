@@ -126,6 +126,7 @@
 (function () {
   const NAVS = [
     { key: 'index', labelKey: 'nav.overview', href: '/web/index.html', icon: iconHome },
+    { key: 'models', labelKey: 'nav.models', href: '/web/models.html', icon: iconModel },
     { key: 'channels', labelKey: 'nav.channels', href: '/web/channels.html', icon: iconSettings },
     { key: 'tokens', labelKey: 'nav.tokens', href: '/web/tokens.html', icon: iconKey },
     { key: 'stats', labelKey: 'nav.stats', href: '/web/stats.html', icon: iconBars },
@@ -168,6 +169,9 @@
   }
   function iconKey() {
     return svg(`<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>`);
+  }
+  function iconModel() {
+    return svg(`<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>`);
   }
   function iconTest() {
     return svg(`<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>`);
