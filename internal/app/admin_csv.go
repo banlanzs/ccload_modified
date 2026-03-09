@@ -200,7 +200,7 @@ func (s *Server) HandleImportChannelsCSV(c *gin.Context) {
 			continue
 		}
 
-		normalizedURL, err := validateChannelBaseURL(url)
+		normalizedURL, err := validateChannelURLs(url)
 		if err != nil {
 			summary.Errors = append(summary.Errors, fmt.Sprintf("第%d行URL无效: %v", lineNo, err))
 			summary.Skipped++

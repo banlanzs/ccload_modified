@@ -114,11 +114,14 @@
       background: rgba(255, 255, 255, 0.97);
       border-color: rgba(148, 163, 184, 0.18);
       box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+      max-width: 100%;
+      overflow-x: auto;
     }
 
     /* ===== 渠道表格布局 ===== */
     .channel-table {
-      table-layout: fixed;
+      table-layout: auto;
+      width: 100%;
     }
 
     .channel-table thead th,
@@ -192,9 +195,9 @@
     }
 
     .ch-col-name {
-      width: 520px;
-      min-width: 520px;
-      max-width: 520px;
+      width: clamp(280px, 38vw, 520px);
+      min-width: 220px;
+      max-width: none;
     }
 
     .ch-col-priority {
@@ -284,9 +287,9 @@
     }
 
     .ch-col-actions {
-      width: 200px;
-      min-width: 200px;
-      max-width: 200px;
+      width: clamp(150px, 16vw, 200px);
+      min-width: 140px;
+      max-width: none;
       white-space: nowrap;
       text-align: right;
     }
@@ -605,12 +608,13 @@
 
     .health-track {
       display: grid;
-      grid-template-columns: repeat(48, 6px);
+      grid-template-columns: repeat(48, minmax(0, 1fr));
       gap: 1px;
-      width: 335px;
-      min-width: 335px;
+      width: 100%;
+      min-width: 0;
       max-width: 335px;
-      flex: 0 0 335px;
+      flex: 1 1 auto;
+      overflow: hidden;
     }
 
     .health-block {

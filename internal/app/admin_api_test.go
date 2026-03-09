@@ -217,6 +217,123 @@ Import-Test-2,https://import2.example.com,5,"test-model-2,test-model-3","{""old"
 	}
 }
 
+func TestAdminAPI_ImportChannelsCSV_MultiURL_Succeeds(t *testing.T) {
+	server := newInMemoryServer(t)
+
+	csvContent := `name,url,priority,models,model_redirects,channel_type,enabled,api_key,key_strategy
+Multi-URL-OK,"https://multi-a.example.com
+https://multi-b.example.com",10,test-model,{},anthropic,true,sk-multi-key,sequential
+`
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "test-import-multi-url.csv")
+	if err != nil {
+		t.Fatalf("创建表单文件字段失败: %v", err)
+	}
+	if _, err := io.WriteString(part, csvContent); err != nil {
+		t.Fatalf("写入CSV内容失败: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("关闭writer失败: %v", err)
+	}
+
+	req := newRequest(http.MethodPost, "/admin/channels/import", bytes.NewReader(body.Bytes()))
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	c, w := newTestContext(t, req)
+
+	server.HandleImportChannelsCSV(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("期望状态码 200, 实际 %d, 响应: %s", w.Code, w.Body.String())
+	}
+
+	var summary ChannelImportSummary
+	mustUnmarshalAPIResponseData(t, w.Body.Bytes(), &summary)
+
+	imported := summary.Created + summary.Updated
+	if imported != 1 {
+		t.Fatalf("期望导入1条记录，实际: %d (Created: %d, Updated: %d, Skipped: %d, Errors: %v)",
+			imported, summary.Created, summary.Updated, summary.Skipped, summary.Errors)
+	}
+	if summary.Skipped != 0 {
+		t.Fatalf("期望Skipped=0，实际: %d (Errors: %v)", summary.Skipped, summary.Errors)
+	}
+
+	ctx := context.Background()
+	configs, err := server.store.ListConfigs(ctx)
+	if err != nil {
+		t.Fatalf("查询渠道列表失败: %v", err)
+	}
+
+	var importedCfg *model.Config
+	for _, cfg := range configs {
+		if cfg.Name == "Multi-URL-OK" {
+			importedCfg = cfg
+			break
+		}
+	}
+	if importedCfg == nil {
+		t.Fatalf("Multi-URL-OK 应被导入")
+	}
+	if importedCfg.URL != "https://multi-a.example.com\nhttps://multi-b.example.com" {
+		t.Fatalf("导入后的URL不匹配，期望多URL换行格式，实际: %q", importedCfg.URL)
+	}
+}
+
+func TestAdminAPI_ImportChannelsCSV_MultiURL_InvalidLineRejected(t *testing.T) {
+	server := newInMemoryServer(t)
+
+	csvContent := `name,url,priority,models,model_redirects,channel_type,enabled,api_key,key_strategy
+Multi-URL-Bad,"https://good.example.com
+https://bad.example.com/v1",10,test-model,{},anthropic,true,sk-multi-bad-key,sequential
+`
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "test-import-multi-url-invalid.csv")
+	if err != nil {
+		t.Fatalf("创建表单文件字段失败: %v", err)
+	}
+	if _, err := io.WriteString(part, csvContent); err != nil {
+		t.Fatalf("写入CSV内容失败: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("关闭writer失败: %v", err)
+	}
+
+	req := newRequest(http.MethodPost, "/admin/channels/import", bytes.NewReader(body.Bytes()))
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	c, w := newTestContext(t, req)
+
+	server.HandleImportChannelsCSV(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("期望状态码 200, 实际 %d, 响应: %s", w.Code, w.Body.String())
+	}
+
+	var summary ChannelImportSummary
+	mustUnmarshalAPIResponseData(t, w.Body.Bytes(), &summary)
+
+	if summary.Created+summary.Updated != 0 || summary.Skipped != 1 {
+		t.Fatalf("期望全部跳过: created=0 updated=0 skipped=1, 实际 summary=%+v", summary)
+	}
+	if len(summary.Errors) == 0 || !strings.Contains(strings.Join(summary.Errors, " "), "/v1") {
+		t.Fatalf("期望错误包含无效URL行信息，实际 Errors: %v", summary.Errors)
+	}
+
+	ctx := context.Background()
+	configs, err := server.store.ListConfigs(ctx)
+	if err != nil {
+		t.Fatalf("查询渠道列表失败: %v", err)
+	}
+	for _, cfg := range configs {
+		if cfg.Name == "Multi-URL-Bad" {
+			t.Fatalf("Multi-URL-Bad 不应被导入")
+		}
+	}
+}
+
 func TestAdminAPI_ImportChannelsCSV_InvalidURLRejected(t *testing.T) {
 	server := newInMemoryServer(t)
 
