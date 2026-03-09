@@ -27,6 +27,7 @@ type geminiPart struct {
 	Text         string                 `json:"text,omitempty"`
 	InlineData   map[string]interface{} `json:"inlineData,omitempty"`
 	FunctionCall map[string]interface{} `json:"functionCall,omitempty"`
+	FunctionResp map[string]interface{} `json:"functionResponse,omitempty"`
 }
 
 type geminiToolWrap struct {
@@ -83,12 +84,50 @@ func (c *GeminiConverter) ToCanonical(payload []byte) (*CanonicalRequest, error)
 			if p.FunctionCall != nil {
 				name, _ := p.FunctionCall["name"].(string)
 				args, _ := p.FunctionCall["args"].(map[string]interface{})
+
+				// [FIX] Gemini 的 functionCall 没有 ID 字段，需要生成稳定的 ID
+				// 使用 name + args 生成确定性 ID，确保往返转换时 ID 一致
+				toolCall := &CanonicalToolCall{
+					Name: name,
+					Args: args,
+				}
+				toolCall.ID = GenerateToolCallID(name, args)
+
 				msg.Content = append(msg.Content, CanonicalPart{
-					Type: "tool_call",
+					Type:     "tool_call",
+					ToolCall: toolCall,
+				})
+			}
+			if p.FunctionResp != nil {
+				// [INFO] Gemini functionResponse 格式：
+				// {"name": "function_name", "response": {"content": "result"}}
+				name, _ := p.FunctionResp["name"].(string)
+				response, _ := p.FunctionResp["response"].(map[string]interface{})
+
+				// 生成与 functionCall 相同的 ID（基于 name）
+				// 注意：这里无法获取原始 args，只能基于 name 生成
+				toolCallID := GenerateToolCallID(name, nil)
+
+				// 提取响应内容
+				var resultText string
+				if response != nil {
+					if content, ok := response["content"].(string); ok {
+						resultText = content
+					} else {
+						// 如果不是字符串，序列化整个 response
+						if respBytes, err := sonic.Marshal(response); err == nil {
+							resultText = string(respBytes)
+						}
+					}
+				}
+
+				msg.Content = append(msg.Content, CanonicalPart{
+					Type: "tool_result",
 					ToolCall: &CanonicalToolCall{
+						ID:   toolCallID,
 						Name: name,
-						Args: args,
 					},
+					Text: resultText,
 				})
 			}
 			if p.InlineData != nil {
@@ -169,10 +208,26 @@ func (c *GeminiConverter) FromCanonical(req *CanonicalRequest) ([]byte, error) {
 				if p.ToolCall == nil {
 					continue
 				}
+				// [INFO] Gemini 的 functionCall 不包含 ID 字段
+				// ID 会在 ToCanonical 时根据 name + args 重新生成
 				gm.Parts = append(gm.Parts, geminiPart{
 					FunctionCall: map[string]interface{}{
 						"name": p.ToolCall.Name,
 						"args": p.ToolCall.Args,
+					},
+				})
+			case "tool_result":
+				if p.ToolCall == nil {
+					continue
+				}
+				// [INFO] Gemini functionResponse 格式
+				// 注意：Gemini 不使用 ID 关联，而是通过 name 关联
+				gm.Parts = append(gm.Parts, geminiPart{
+					FunctionResp: map[string]interface{}{
+						"name": p.ToolCall.Name,
+						"response": map[string]interface{}{
+							"content": p.Text,
+						},
 					},
 				})
 			}
