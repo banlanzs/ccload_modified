@@ -1,5 +1,7 @@
 # ccLoad - Claude Code & Codex & Gemini & OpenAI Compatible API Proxy Service
 
+I initially cloned [ccload](https://github.com/caidaoli/ccLoad) to my local machine, then modified some features for my own use, such as adding API format conversion functionality from [claude-code-ccr](https://github.com/musistudio/claude-code-router) and [Api-Conversion](https://github.com/chinrain/Api-Conversion). Then I made other minor tweaks and adjustments—it's a hodgepodge. Therefore, you won't see any fork information here, please be aware.
+
 **English | [简体中文](README.md)**
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8.svg)](https://golang.org)
