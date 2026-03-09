@@ -454,6 +454,14 @@ func (s *Server) prepareRequestBody(cfg *model.Config, reqCtx *proxyRequestConte
 				bodyToSend = converted
 				log.Printf("[SUCCESS] Channel %s (ID=%d): Conversion succeeded (new system), size: %d -> %d bytes",
 					cfg.Name, cfg.ID, originalSize, len(converted))
+
+				// [GEMINI_DEBUG] Gemini 渠道：记录转换后请求体结构（用于诊断格式问题）
+				if cfg.ChannelType == "gemini" {
+					hasTools := detectHasField(bodyToSend, "tools")
+					hasFunctionCalls := detectHasField(bodyToSend, "functionCall")
+					log.Printf("[GEMINI_REQUEST] Channel=%s (ID=%d), BodySize=%d, HasTools=%v, HasFunctionCalls=%v",
+						cfg.Name, cfg.ID, len(bodyToSend), hasTools, hasFunctionCalls)
+				}
 			} else {
 				// 转换失败时记录日志并回退到原始请求体
 				log.Printf("[WARN] Channel %s (ID=%d): Format conversion failed (new system, %s->%s): %T, using original payload",
@@ -545,6 +553,21 @@ func stripAnthropicBillingHeaders(body []byte) []byte {
 		return body
 	}
 	return result
+}
+
+
+func detectHasField(body []byte, fieldName string) bool {
+	if len(body) == 0 || strings.TrimSpace(fieldName) == "" {
+		return false
+	}
+
+	var payload map[string]json.RawMessage
+	if err := sonic.Unmarshal(body, &payload); err != nil {
+		return false
+	}
+
+	_, exists := payload[fieldName]
+	return exists
 }
 
 func isAnthropicBillingHeaderSystemBlock(raw json.RawMessage) bool {

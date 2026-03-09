@@ -771,6 +771,24 @@ func TestClassify400Error(t *testing.T) {
 			expected:     ErrorLevelChannel,
 			reason:       "代理场景下400默认视为上游异常",
 		},
+		{
+			name:         "gemini_no_tool_output_found",
+			responseBody: []byte(`{"error":{"code":400,"message":"No tool output found for function call call_RhpVrFeGWWq0dM9o5PyijGQ1.","status":"INVALID_ARGUMENT"}}`),
+			expected:     ErrorLevelClient,
+			reason:       "Gemini 工具调用协议错误应直接返回客户端",
+		},
+		{
+			name:         "gemini_function_call_invalid_argument",
+			responseBody: []byte(`{"error":{"message":"Invalid function call format","status":"INVALID_ARGUMENT"}}`),
+			expected:     ErrorLevelClient,
+			reason:       "function call + INVALID_ARGUMENT 组合应视为客户端协议错误",
+		},
+		{
+			name:         "no_tool_output_lowercase",
+			responseBody: []byte(`{"error":"no tool output found for call xyz"}`),
+			expected:     ErrorLevelClient,
+			reason:       "no tool output found（小写）也应被识别为客户端错误",
+		},
 	}
 
 	for _, tt := range tests {

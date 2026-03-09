@@ -167,6 +167,35 @@ func (cr *ChannelRequest) Validate() error {
 		}
 	}
 
+	// 新格式转换配置验证
+	cr.ConversionSourceFormat = strings.TrimSpace(cr.ConversionSourceFormat)
+	cr.ConversionTargetFormat = strings.TrimSpace(cr.ConversionTargetFormat)
+
+	if cr.EnableConversion {
+		// 验证源格式（如果指定）
+		if cr.ConversionSourceFormat != "" {
+			srcFormat := ccr.ParseProviderFormat(cr.ConversionSourceFormat)
+			if srcFormat == "" {
+				return fmt.Errorf("invalid conversion_source_format: %q (allowed: openai, anthropic, gemini)", cr.ConversionSourceFormat)
+			}
+		}
+
+		// 验证目标格式（如果指定）
+		if cr.ConversionTargetFormat != "" {
+			dstFormat := ccr.ParseProviderFormat(cr.ConversionTargetFormat)
+			if dstFormat == "" {
+				return fmt.Errorf("invalid conversion_target_format: %q (allowed: openai, anthropic, gemini)", cr.ConversionTargetFormat)
+			}
+		}
+
+		// Gemini 渠道特殊校验：确保目标格式一致
+		if cr.ChannelType == "gemini" || cr.ChannelType == "Gemini" {
+			if cr.ConversionTargetFormat != "" && cr.ConversionTargetFormat != "gemini" {
+				return fmt.Errorf("gemini channel must use gemini as conversion_target_format (got: %q)", cr.ConversionTargetFormat)
+			}
+		}
+	}
+
 	return nil
 }
 

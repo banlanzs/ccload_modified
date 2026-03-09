@@ -397,6 +397,14 @@ func classify400Error(responseBody []byte) ErrorLevel {
 	}
 	bodyLower := strings.ToLower(string(responseBody))
 
+	// 工具调用协议错误（客户端级，不可重试）
+	// 场景：Gemini "No tool output found for function call xxx"
+	// 原因：工具调用生命周期不完整，重试无意义
+	if strings.Contains(bodyLower, "no tool output found") ||
+		(strings.Contains(bodyLower, "function call") && strings.Contains(bodyLower, "invalid_argument")) {
+		return ErrorLevelClient
+	}
+
 	// Key 级特征（罕见）
 	if strings.Contains(bodyLower, "invalid_api_key") ||
 		strings.Contains(bodyLower, "api key") {
