@@ -41,15 +41,38 @@ func (s *Server) handleListGeminiModels(c *gin.Context) {
 	})
 }
 
-// handleListOpenAIModels 处理 GET /v1/models 请求，返回本地 OpenAI 模型列表
+// handleListOpenAIModels 处理 GET /v1/models 请求，返回本地 OpenAI 模型列表或虚拟模型列表
 func (s *Server) handleListOpenAIModels(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// 获取所有 openai 渠道的去重模型列表
-	models, err := s.getModelsByChannelType(ctx, "openai")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load models"})
-		return
+	// 检查是否启用虚拟模型功能
+	enableVirtualModels := s.configService.GetBool("enable_virtual_models", false)
+
+	var models []string
+	var err error
+
+	if enableVirtualModels {
+		// 返回启用的虚拟模型列表
+		virtualModels, err := s.store.ListVirtualModels(ctx)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load virtual models"})
+			return
+		}
+
+		// 仅返回已启用的虚拟模型
+		models = make([]string, 0, len(virtualModels))
+		for _, vm := range virtualModels {
+			if vm.Enabled {
+				models = append(models, vm.Name)
+			}
+		}
+	} else {
+		// 返回 OpenAI 渠道模型列表（原有行为）
+		models, err = s.getModelsByChannelType(ctx, "openai")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load models"})
+			return
+		}
 	}
 
 	// 构造 OpenAI API 响应格式

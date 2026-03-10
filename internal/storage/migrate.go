@@ -713,6 +713,8 @@ func initDefaultSettings(ctx context.Context, db *sql.DB, dialect Dialect) error
 		{"health_min_confident_sample", "20", "int", "置信样本量阈值(样本量达到此值时惩罚全额生效)", "20"},
 		// 冷却兜底配置
 		{"cooldown_fallback_enabled", "true", "bool", "所有渠道冷却时选最优渠道兜底(关闭则直接拒绝请求)", "true"},
+		// 虚拟模型功能
+		{"enable_virtual_models", "false", "bool", "启用虚拟模型功能(启用后/v1/models返回虚拟模型列表)", "false"},
 	}
 
 	var query string

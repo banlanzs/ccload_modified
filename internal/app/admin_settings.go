@@ -89,6 +89,23 @@ func (s *Server) AdminUpdateSetting(c *gin.Context) {
 
 	// log.Printf("[INFO] Setting updated: %s = %s (restart required)", key, req.Value)
 
+	// 某些设置不需要重启，直接更新缓存并返回成功
+	noRestartKeys := map[string]bool{
+		"enable_virtual_models": true,
+	}
+
+	if noRestartKeys[key] {
+		// 手动更新内存缓存
+		s.configService.ReloadSettings(c.Request.Context())
+
+		RespondJSON(c, http.StatusOK, gin.H{
+			"message": "保存成功",
+			"key":     key,
+			"value":   req.Value,
+		})
+		return
+	}
+
 	// 返回成功响应，告知需要重启
 	RespondJSON(c, http.StatusOK, gin.H{
 		"message": "配置已保存，程序将在2秒后重启",

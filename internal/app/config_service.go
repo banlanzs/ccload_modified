@@ -154,6 +154,26 @@ func (cs *ConfigService) UpdateSetting(ctx context.Context, key, value string) e
 	return cs.store.UpdateSetting(ctx, key, value)
 }
 
+// ReloadSettings 重新加载所有配置到内存缓存（用于不需要重启的配置更新）
+func (cs *ConfigService) ReloadSettings(ctx context.Context) error {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	settings, err := cs.store.ListAllSettings(ctx)
+	if err != nil {
+		return fmt.Errorf("reload settings from db: %w", err)
+	}
+
+	// 清空并重新填充缓存
+	cs.cache = make(map[string]*model.SystemSetting)
+	for _, s := range settings {
+		cs.cache[s.Key] = s
+	}
+
+	log.Printf("[INFO] ConfigService reloaded %d settings", len(settings))
+	return nil
+}
+
 // ListAllSettings 获取所有配置(用于前端展示)
 func (cs *ConfigService) ListAllSettings(ctx context.Context) ([]*model.SystemSetting, error) {
 	return cs.store.ListAllSettings(ctx)

@@ -660,12 +660,61 @@ function onLocaleChanged() {
   }
 }
 
+async function loadVirtualModelsToggle() {
+  try {
+    const data = await fetchDataWithAuth('/admin/settings/enable_virtual_models');
+    const toggle = document.getElementById('enableVirtualModelsToggle');
+    if (toggle && data) {
+      // data 是一个 SystemSetting 对象，包含 value 字段
+      const isEnabled = data.value === 'true' || data.value === true;
+      toggle.checked = isEnabled;
+      console.log('[Models] Virtual models toggle loaded:', isEnabled);
+    }
+  } catch (err) {
+    console.error('Failed to load virtual models toggle setting', err);
+  }
+}
+
+async function saveVirtualModelsToggle(enabled) {
+  try {
+    const response = await fetchDataWithAuth('/admin/settings/enable_virtual_models', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: enabled ? 'true' : 'false' })
+    });
+    console.log('[Models] Virtual models toggle saved:', enabled, response);
+
+    // 显示成功消息（注意：服务器会在2秒后重启）
+    if (response && response.message) {
+      window.showSuccess?.(response.message);
+    } else {
+      window.showSuccess?.(t('common.saveSuccess'));
+    }
+  } catch (err) {
+    console.error('Failed to save virtual models toggle setting', err);
+    window.showError?.(t('common.saveFailed'));
+    // 保存失败时恢复开关状态
+    const toggle = document.getElementById('enableVirtualModelsToggle');
+    if (toggle) {
+      toggle.checked = !enabled;
+    }
+  }
+}
+
 async function initModelsPage() {
   initTopbar('models');
   window.i18n?.translatePage?.();
   bindEvents();
 
-  await Promise.all([loadVirtualModels(), loadChannels()]);
+  await Promise.all([loadVirtualModels(), loadChannels(), loadVirtualModelsToggle()]);
+
+  // Bind toggle change event
+  const toggle = document.getElementById('enableVirtualModelsToggle');
+  if (toggle) {
+    toggle.addEventListener('change', (e) => {
+      saveVirtualModelsToggle(e.target.checked);
+    });
+  }
 
   window.i18n?.onLocaleChange?.(() => {
     onLocaleChanged();
