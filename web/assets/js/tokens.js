@@ -35,7 +35,35 @@
       modalStack.pop();
     }
 
+    function initExpirySelects() {
+      const template = document.getElementById('tpl-token-expiry-options');
+      if (!template) return;
+
+      const optionsHtml = template.innerHTML.trim();
+      document.querySelectorAll('[data-expiry-select]').forEach((select) => {
+        const currentValue = select.value;
+        select.innerHTML = optionsHtml;
+        if (currentValue) {
+          select.value = currentValue;
+        }
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      initExpirySelects();
+
+      const renderTimeRangeSelector = () => {
+        if (typeof window.renderDateRangeButtons === 'function') {
+          window.renderDateRangeButtons('tokens-time-range', {
+            values: ['today', 'yesterday', 'day_before_yesterday', 'this_week', 'this_month', 'last_month', 'all'],
+            includeAll: true,
+            activeValue: currentTimeRange
+          });
+        }
+      };
+
+      renderTimeRangeSelector();
+
       // 初始化时间范围选择器
       window.initTimeRangeSelector((range) => {
         currentTimeRange = range;
@@ -62,6 +90,11 @@
 
       // 监听语言切换事件，重新渲染令牌列表
       window.i18n.onLocaleChange(() => {
+        renderTimeRangeSelector();
+        window.initTimeRangeSelector((range) => {
+          currentTimeRange = range;
+          loadTokens();
+        });
         renderTokens();
       });
     });

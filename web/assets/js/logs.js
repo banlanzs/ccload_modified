@@ -6,7 +6,7 @@ let totalLogsPages = 1;
 let totalLogs = 0;
 let currentChannelType = 'all'; // 当前选中的渠道类型
 let authTokens = []; // 令牌列表
-let defaultTestContent = 'sonnet 4.0的发布日期是什么'; // 默认测试内容（从设置加载）
+let logsDefaultTestContent = 'sonnet 4.0的发布日期是什么'; // 默认测试内容（从设置加载）
 
 const ACTIVE_REQUESTS_POLL_INTERVAL_MS = 2000;
 let activeRequestsPollTimer = null;
@@ -84,6 +84,15 @@ function clearActiveRequestsRows() {
   document.querySelectorAll('tr.pending-row').forEach(el => el.remove());
 }
 
+function buildChannelTrigger(channelId, channelName, baseURL = '') {
+  if (!channelId || !channelName) {
+    return '<span style="color: var(--neutral-500);">-</span>';
+  }
+
+  const channelTooltip = baseURL ? ` title="${escapeHtml(baseURL)}"` : '';
+  return `<button type="button" class="channel-link" data-channel-id="${channelId}"${channelTooltip}>${escapeHtml(channelName)} <small>(#${channelId})</small></button>`;
+}
+
 function ensureActiveRequestsPollingStarted() {
   if (activeRequestsPollTimer) return;
   activeRequestsPollTimer = setInterval(async () => {
@@ -103,7 +112,7 @@ async function loadDefaultTestContent() {
   try {
     const setting = await fetchDataWithAuth('/admin/settings/channel_test_content');
     if (setting && setting.value) {
-      defaultTestContent = setting.value;
+      logsDefaultTestContent = setting.value;
     }
   } catch (e) {
     console.warn('加载默认测试内容失败，使用内置默认值', e);
@@ -121,31 +130,7 @@ async function load(skipLoading = false) {
       renderLogsLoading();
     }
 
-    // 从表单元素获取筛选条件（支持下拉框切换后立即生效）
-    const range = document.getElementById('f_hours')?.value || 'today';
-    const channelId = document.getElementById('f_id')?.value?.trim() || '';
-    const channelName = document.getElementById('f_name')?.value?.trim() || '';
-    const model = document.getElementById('f_model')?.value?.trim() || '';
-    const statusCode = document.getElementById('f_status')?.value?.trim() || '';
-    const authTokenId = document.getElementById('f_auth_token')?.value?.trim() || '';
-
-    const params = new URLSearchParams({
-      range,
-      limit: logsPageSize.toString(),
-      offset: ((currentLogsPage - 1) * logsPageSize).toString()
-    });
-
-    if (channelId) params.set('channel_id', channelId);
-    if (channelName) params.set('channel_name_like', channelName);
-    if (model) params.set('model_like', model);
-    if (statusCode) params.set('status_code', statusCode);
-    if (authTokenId) params.set('auth_token_id', authTokenId);
-
-    // 添加渠道类型筛选
-    if (currentChannelType && currentChannelType !== 'all') {
-      params.set('channel_type', currentChannelType);
-    }
-
+    const params = buildLogsRequestParams();
     const response = await fetchAPIWithAuth('/admin/logs?' + params.toString());
     if (!response.success) throw new Error(response.error || '无法加载请求日志');
 
@@ -321,14 +306,9 @@ function renderActiveRequests(activeRequests) {
       durationDisplay = `${req.client_first_byte_time.toFixed(2)}s/${elapsed}s...`;
     }
 
-    // 渠道显示（鼠标移上去时显示URL）
-    let channelTooltip = '';
-    if (req.base_url) {
-      channelTooltip = ` title="${escapeHtml(req.base_url)}"`;
-    }
     let channelDisplay = '<span style="color: var(--neutral-500);">选择中...</span>';
     if (req.channel_id && req.channel_name) {
-      channelDisplay = `<a class="channel-link" href="/web/channels.html?id=${req.channel_id}#channel-${req.channel_id}"${channelTooltip}>${escapeHtml(req.channel_name)} <small>(#${req.channel_id})</small></a>`;
+      channelDisplay = buildChannelTrigger(req.channel_id, req.channel_name, req.base_url || '');
     }
 
     // Key显示
@@ -381,7 +361,9 @@ function renderActiveRequests(activeRequests) {
 
 // ✅ 动态计算列数（避免硬编码维护成本）
 function getTableColspan() {
-  const headerCells = document.querySelectorAll('thead th');
+  const table = document.getElementById('tbody')?.closest('table')
+    || document.querySelector('.logs-table');
+  const headerCells = table ? table.querySelectorAll('thead th') : [];
   return headerCells.length || 13; // fallback到13列（向后兼容）
 }
 
@@ -429,13 +411,9 @@ function renderLogs(data) {
       (entry.channel_id ? `渠道 #${entry.channel_id}` :
         (entry.message === 'exhausted backends' ? '系统（所有渠道失败）' :
           entry.message === 'no available upstream (all cooled or none)' ? '系统（无可用渠道）' : '系统'));
-    // 预先计算URL用于tooltip
-    let channelTooltip = '';
-    if (entry.base_url) {
-      channelTooltip = ` title="${escapeHtml(entry.base_url)}"`;
-    }
+    const channelTooltip = entry.base_url ? ` title="${escapeHtml(entry.base_url)}"` : '';
     const configDisplay = entry.channel_id ?
-      `<a class="channel-link" href="/web/channels.html?id=${entry.channel_id}#channel-${entry.channel_id}"${channelTooltip}>${escapeHtml(entry.channel_name || '')} <small>(#${entry.channel_id})</small></a>` :
+      buildChannelTrigger(entry.channel_id, entry.channel_name || '', entry.base_url || '') :
       `<span style="color: var(--neutral-500);"${channelTooltip}>${escapeHtml(configInfo)}</span>`;
 
     // 2. 状态码样式
@@ -676,102 +654,67 @@ function applyFilter() {
   currentLogsPage = 1;
   totalLogsPages = 1;
 
-  const range = document.getElementById('f_hours').value.trim();
-  const id = document.getElementById('f_id').value.trim();
-  const name = document.getElementById('f_name').value.trim();
-  const model = document.getElementById('f_model').value.trim();
-  const status = document.getElementById('f_status') ? document.getElementById('f_status').value.trim() : '';
-  const authToken = document.getElementById('f_auth_token').value.trim();
-  const channelType = document.getElementById('f_channel_type').value.trim();
+  const filters = getLogsFilters();
 
   // 保存筛选条件到 localStorage
-  saveLogsFilters();
-
-  const q = new URLSearchParams(location.search);
-
-  if (range) q.set('range', range); else q.delete('range');
-  if (id) q.set('channel_id', id); else q.delete('channel_id');
-  if (name) { q.set('channel_name_like', name); q.delete('channel_name'); }
-  else { q.delete('channel_name_like'); }
-  if (model) { q.set('model_like', model); q.delete('model'); }
-  else { q.delete('model_like'); q.delete('model'); }
-  if (status) { q.set('status_code', status); }
-  else { q.delete('status_code'); }
-  if (authToken) q.set('auth_token_id', authToken); else q.delete('auth_token_id');
-  if (channelType) q.set('channel_type', channelType); else q.set('channel_type', 'all');
-
-  // 使用 pushState 更新 URL，避免页面重新加载
-  history.pushState(null, '', '?' + q.toString());
+  window.FilterState.save(LOGS_FILTER_KEY, filters);
+  window.FilterState.writeHistory({
+    search: location.search,
+    pathname: location.pathname,
+    values: filters,
+    fields: LOGS_FILTER_FIELDS,
+    preserveExistingParams: true
+  });
   load();
 }
 
-async function initFilters() {
-  const u = new URLSearchParams(location.search);
-  const saved = loadLogsFilters();
-  // URL 参数优先，否则从 localStorage 恢复
-  const hasUrlParams = u.toString().length > 0;
+function applyLogsFilterValues(filters) {
+  window.applyFilterControlValues(filters, {
+    channelId: 'f_id',
+    channelName: 'f_name',
+    model: 'f_model',
+    status: 'f_status'
+  });
 
-  const id = u.get('channel_id') || (!hasUrlParams && saved?.channelId) || '';
-  const name = u.get('channel_name_like') || u.get('channel_name') || (!hasUrlParams && saved?.channelName) || '';
-  const range = u.get('range') || (!hasUrlParams && saved?.range) || 'today';
-  const model = u.get('model_like') || u.get('model') || (!hasUrlParams && saved?.model) || '';
-  const status = u.get('status_code') || (!hasUrlParams && saved?.status) || '';
-  const authToken = u.get('auth_token_id') || (!hasUrlParams && saved?.authToken) || '';
-  const channelType = u.get('channel_type') || (!hasUrlParams && saved?.channelType) || 'all';
+  currentChannelType = filters.channelType || 'all';
+  const channelTypeEl = document.getElementById('f_channel_type');
+  if (channelTypeEl) channelTypeEl.value = currentChannelType;
+}
 
-  // 初始化时间范围选择器 (默认"本日")，切换后立即筛选
-  if (window.initDateRangeSelector) {
-    initDateRangeSelector('f_hours', 'today', () => {
-      saveLogsFilters();
+async function initFilters(restoredFilters) {
+  const range = restoredFilters.range || 'today';
+  const authToken = restoredFilters.authToken || '';
+
+  window.initSavedDateRangeFilter({
+    selectId: 'f_hours',
+    defaultValue: 'today',
+    restoredValue: range,
+    onChange: () => {
+      window.FilterState.save(LOGS_FILTER_KEY, getLogsFilters());
       currentLogsPage = 1;
       load();
-    });
-    // 设置URL中的值
-    document.getElementById('f_hours').value = range;
-  }
+    }
+  });
 
-  document.getElementById('f_id').value = id;
-  document.getElementById('f_name').value = name;
-  document.getElementById('f_model').value = model;
-  const statusEl = document.getElementById('f_status');
-  if (statusEl) statusEl.value = status;
+  applyLogsFilterValues(restoredFilters);
 
-  // 设置渠道类型
-  currentChannelType = channelType;
-  const channelTypeEl = document.getElementById('f_channel_type');
-  if (channelTypeEl) channelTypeEl.value = channelType;
-
-  // 加载令牌列表（返回 Promise 以便等待完成）
-  authTokens = await window.loadAuthTokensIntoSelect('f_auth_token');
-  document.getElementById('f_auth_token').value = authToken;
-
-  // 令牌选择器切换后立即筛选
-  document.getElementById('f_auth_token').addEventListener('change', () => {
-    saveLogsFilters();
-    currentLogsPage = 1;
-    load();
+  authTokens = await window.initAuthTokenFilter({
+    selectId: 'f_auth_token',
+    value: authToken,
+    onChange: () => {
+      window.FilterState.save(LOGS_FILTER_KEY, getLogsFilters());
+      currentLogsPage = 1;
+      load();
+    }
   });
 
   // 事件监听
   document.getElementById('btn_filter').addEventListener('click', applyFilter);
 
-  // 输入框自动筛选（防抖）
-  const debouncedFilter = debounce(applyFilter, 500);
-  ['f_id', 'f_name', 'f_model', 'f_status'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('input', debouncedFilter);
-    }
-  });
-
-  // 回车键筛选
-  ['f_hours', 'f_id', 'f_name', 'f_model', 'f_status', 'f_auth_token', 'f_channel_type'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('keydown', e => {
-        if (e.key === 'Enter') applyFilter();
-      });
-    }
+  window.bindFilterApplyInputs({
+    apply: applyFilter,
+    debounceInputIds: ['f_id', 'f_name', 'f_model', 'f_status'],
+    enterInputIds: ['f_hours', 'f_id', 'f_name', 'f_model', 'f_status', 'f_auth_token', 'f_channel_type']
   });
 }
 
@@ -899,28 +842,47 @@ function updateTestKeyIndexInfo(text) {
 
 // localStorage key for logs page filters
 const LOGS_FILTER_KEY = 'logs.filters';
+const LOGS_FILTER_FIELDS = [
+  { key: 'range', queryKeys: ['range'], defaultValue: 'today' },
+  { key: 'channelId', queryKeys: ['channel_id'], defaultValue: '' },
+  { key: 'channelName', queryKeys: ['channel_name_like', 'channel_name'], defaultValue: '' },
+  { key: 'model', queryKeys: ['model_like', 'model'], defaultValue: '' },
+  { key: 'status', queryKeys: ['status_code'], defaultValue: '' },
+  { key: 'authToken', queryKeys: ['auth_token_id'], defaultValue: '' },
+  {
+    key: 'channelType',
+    queryKeys: ['channel_type'],
+    defaultValue: 'all',
+    includeInQuery(value) {
+      return Boolean(value) && value !== 'all';
+    },
+    includeInRequest(value) {
+      return Boolean(value) && value !== 'all';
+    }
+  }
+];
 
-function saveLogsFilters() {
-  try {
-    const filters = {
-      channelType: document.getElementById('f_channel_type')?.value || 'all',
-      range: document.getElementById('f_hours')?.value || 'today',
-      channelId: document.getElementById('f_id')?.value || '',
-      channelName: document.getElementById('f_name')?.value || '',
-      model: document.getElementById('f_model')?.value || '',
-      status: document.getElementById('f_status')?.value || '',
-      authToken: document.getElementById('f_auth_token')?.value || ''
-    };
-    localStorage.setItem(LOGS_FILTER_KEY, JSON.stringify(filters));
-  } catch (_) { }
+function getLogsFilters() {
+  return {
+    ...window.readFilterControlValues({
+      range: { id: 'f_hours', defaultValue: 'today', trim: true },
+      channelId: { id: 'f_id', trim: true },
+      channelName: { id: 'f_name', trim: true },
+      model: { id: 'f_model', trim: true },
+      status: { id: 'f_status', trim: true },
+      authToken: { id: 'f_auth_token', trim: true }
+    }),
+    channelType: document.getElementById('f_channel_type')?.value || 'all',
+  };
 }
 
-function loadLogsFilters() {
-  try {
-    const saved = localStorage.getItem(LOGS_FILTER_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch (_) { }
-  return null;
+function buildLogsRequestParams() {
+  return window.FilterQuery.buildRequestParams(getLogsFilters(), LOGS_FILTER_FIELDS, {
+    baseParams: {
+      limit: logsPageSize.toString(),
+      offset: ((currentLogsPage - 1) * logsPageSize).toString()
+    }
+  });
 }
 
 // 页面初始化
@@ -931,38 +893,34 @@ document.addEventListener('DOMContentLoaded', async function () {
   // 优先从 URL 读取，其次从 localStorage 恢复，默认 all
   const u = new URLSearchParams(location.search);
   const hasUrlParams = u.toString().length > 0;
-  const savedFilters = loadLogsFilters();
-  currentChannelType = u.get('channel_type') || (!hasUrlParams && savedFilters?.channelType) || 'all';
+  const savedFilters = window.FilterState.load(LOGS_FILTER_KEY);
+  const restoredFilters = window.FilterState.restore({
+    search: location.search,
+    savedFilters,
+    fields: LOGS_FILTER_FIELDS
+  });
+  currentChannelType = restoredFilters.channelType || 'all';
 
   // 并行初始化：渠道类型 + 默认测试内容同时加载（节省一次 RTT）
   await Promise.all([
     window.initChannelTypeFilter('f_channel_type', currentChannelType, (value) => {
       currentChannelType = value;
-      saveLogsFilters();
+      window.FilterState.save(LOGS_FILTER_KEY, getLogsFilters());
       currentLogsPage = 1;
       load();
     }),
     loadDefaultTestContent()
   ]);
 
-  await initFilters();
+  await initFilters(restoredFilters);
 
-  // ✅ 修复：如果没有 URL 参数但有保存的筛选条件，先同步 URL 再加载数据
-  if (!hasUrlParams && savedFilters) {
-    const q = new URLSearchParams();
-    if (savedFilters.range) q.set('range', savedFilters.range);
-    if (savedFilters.channelId) q.set('channel_id', savedFilters.channelId);
-    if (savedFilters.channelName) q.set('channel_name_like', savedFilters.channelName);
-    if (savedFilters.model) q.set('model_like', savedFilters.model);
-    if (savedFilters.status) q.set('status_code', savedFilters.status);
-    if (savedFilters.authToken) q.set('auth_token_id', savedFilters.authToken);
-    if (savedFilters.channelType && savedFilters.channelType !== 'all') {
-      q.set('channel_type', savedFilters.channelType);
-    }
-    // 使用 replaceState 更新 URL，不触发页面刷新
-    if (q.toString()) {
-      history.replaceState(null, '', '?' + q.toString());
-    }
+  const restoredSearch = window.FilterState.buildRestoreSearch(
+    hasUrlParams ? location.search : '',
+    savedFilters,
+    LOGS_FILTER_FIELDS
+  );
+  if (restoredSearch) {
+    history.replaceState(null, '', restoredSearch);
   }
 
   load();
@@ -991,6 +949,15 @@ document.addEventListener('DOMContentLoaded', async function () {
   const tbody = document.getElementById('tbody');
   if (tbody) {
     tbody.addEventListener('click', (e) => {
+      const channelBtn = e.target.closest('.channel-link[data-channel-id]');
+      if (channelBtn) {
+        const channelId = parseInt(channelBtn.dataset.channelId, 10);
+        if (Number.isFinite(channelId) && channelId > 0 && typeof openLogChannelEditor === 'function') {
+          openLogChannelEditor(channelId);
+        }
+        return;
+      }
+
       const btn = e.target.closest('.test-key-btn[data-action]');
       if (!btn) return;
 
@@ -1014,33 +981,23 @@ document.addEventListener('DOMContentLoaded', async function () {
 window.addEventListener('pageshow', async function (event) {
   if (event.persisted) {
     // 页面从 bfcache 恢复，重新同步筛选器状态
-    const savedFilters = loadLogsFilters();
+    const savedFilters = window.FilterState.load(LOGS_FILTER_KEY);
     if (savedFilters) {
+      const restoredFilters = window.FilterState.restore({
+        search: '',
+        savedFilters,
+        fields: LOGS_FILTER_FIELDS
+      });
+
       // 重新加载令牌列表并设置值
       authTokens = await window.loadAuthTokensIntoSelect('f_auth_token');
-      if (savedFilters.authToken) {
-        document.getElementById('f_auth_token').value = savedFilters.authToken;
+      if (restoredFilters.authToken) {
+        document.getElementById('f_auth_token').value = restoredFilters.authToken;
       }
-      // 同步其他筛选器
-      if (savedFilters.channelType) {
-        document.getElementById('f_channel_type').value = savedFilters.channelType;
-        currentChannelType = savedFilters.channelType;
-      }
-      if (savedFilters.range) {
-        document.getElementById('f_hours').value = savedFilters.range;
-      }
-      if (savedFilters.channelId) {
-        document.getElementById('f_id').value = savedFilters.channelId;
-      }
-      if (savedFilters.channelName) {
-        document.getElementById('f_name').value = savedFilters.channelName;
-      }
-      if (savedFilters.model) {
-        document.getElementById('f_model').value = savedFilters.model;
-      }
-      if (savedFilters.status) {
-        document.getElementById('f_status').value = savedFilters.status;
-      }
+
+      document.getElementById('f_hours').value = restoredFilters.range || 'today';
+      applyLogsFilterValues(restoredFilters);
+
       // 重新加载数据
       currentLogsPage = 1;
       load();
@@ -1154,7 +1111,7 @@ function resetTestKeyModal() {
   document.getElementById('testKeyProgress').classList.remove('show');
   document.getElementById('testKeyResult').classList.remove('show', 'success', 'error');
   document.getElementById('runKeyTestBtn').disabled = false;
-  document.getElementById('testKeyContent').value = defaultTestContent;
+  document.getElementById('testKeyContent').value = logsDefaultTestContent;
   document.getElementById('testKeyStream').checked = true;
   updateTestKeyIndexInfo('');
   // 重置模型选择框
@@ -1169,7 +1126,7 @@ async function runKeyTest() {
   const contentInput = document.getElementById('testKeyContent');
   const streamCheckbox = document.getElementById('testKeyStream');
   const selectedModel = modelSelect.value;
-  const testContent = contentInput.value.trim() || defaultTestContent;
+  const testContent = contentInput.value.trim() || logsDefaultTestContent;
   const streamEnabled = streamCheckbox.checked;
 
   if (!selectedModel) {

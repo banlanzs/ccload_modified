@@ -1,8 +1,61 @@
+function setChannelModalTitle(i18nKey) {
+  const titleEl = document.getElementById('modalTitle');
+  if (!titleEl) return;
+
+  titleEl.setAttribute('data-i18n', i18nKey);
+  titleEl.textContent = window.t(i18nKey);
+}
+
+async function resolveEditableChannel(id) {
+  const cachedChannel = Array.isArray(channels) ? channels.find(c => c.id === id) : null;
+  if (cachedChannel) {
+    return cachedChannel;
+  }
+
+  try {
+    return await fetchDataWithAuth(`/admin/channels/${id}`);
+  } catch (error) {
+    console.error('Failed to fetch channel', error);
+    return null;
+  }
+}
+
+async function handleChannelSaveSuccess({ isNewChannel, newChannelType, savedChannelId, response }) {
+  if (window.ChannelModalHooks && typeof window.ChannelModalHooks.afterSave === 'function') {
+    await window.ChannelModalHooks.afterSave({
+      isNewChannel,
+      newChannelType,
+      savedChannelId,
+      response
+    });
+    return;
+  }
+
+  clearChannelsCache();
+
+  const hasFilters = typeof filters !== 'undefined' && filters;
+  const currentType = hasFilters ? filters.channelType : 'all';
+  let nextType = currentType || 'all';
+
+  // 新增渠道时，如果类型与当前筛选器不匹配，切换到新渠道的类型
+  if (isNewChannel && hasFilters && currentType !== 'all' && currentType !== newChannelType) {
+    filters.channelType = newChannelType;
+    nextType = newChannelType;
+    const typeFilter = document.getElementById('channelTypeFilter');
+    if (typeFilter) typeFilter.value = newChannelType;
+    if (typeof saveChannelsFilters === 'function') saveChannelsFilters();
+  }
+
+  if (typeof loadChannels === 'function') {
+    await loadChannels(nextType);
+  }
+}
+
 function showAddModal() {
   editingChannelId = null;
   currentChannelKeyCooldowns = [];
 
-  document.getElementById('modalTitle').textContent = window.t('channels.addChannel');
+  setChannelModalTitle('channels.addChannel');
   document.getElementById('channelForm').reset();
   document.getElementById('channelEnabled').checked = true;
   document.querySelector('input[name="channelType"][value="anthropic"]').checked = true;
@@ -43,12 +96,12 @@ function showAddModal() {
 }
 
 async function editChannel(id) {
-  const channel = channels.find(c => c.id === id);
+  const channel = await resolveEditableChannel(id);
   if (!channel) return;
 
   editingChannelId = id;
 
-  document.getElementById('modalTitle').textContent = window.t('channels.editChannel');
+  setChannelModalTitle('channels.editChannel');
   document.getElementById('channelName').value = channel.name;
   setInlineURLTableData(channel.url);
 
@@ -273,20 +326,11 @@ async function saveChannel(event) {
 
     const isNewChannel = !editingChannelId;
     const newChannelType = formData.channel_type;
+    const savedChannelId = editingChannelId;
 
     resetChannelFormDirty(); // 保存成功，重置dirty状态（避免closeModal弹确认框）
     closeModal();
-    clearChannelsCache();
-
-    // 新增渠道时，如果类型与当前筛选器不匹配，切换到新渠道的类型
-    if (isNewChannel && filters.channelType !== 'all' && filters.channelType !== newChannelType) {
-      filters.channelType = newChannelType;
-      const typeFilter = document.getElementById('channelTypeFilter');
-      if (typeFilter) typeFilter.value = newChannelType;
-      if (typeof saveChannelsFilters === 'function') saveChannelsFilters();
-    }
-
-    await loadChannels(filters.channelType);
+    await handleChannelSaveSuccess({ isNewChannel, newChannelType, savedChannelId, response: resp });
     if (window.showSuccess) window.showSuccess(isNewChannel ? window.t('channels.channelAdded') : window.t('channels.channelUpdated'));
   } catch (e) {
     console.error('Save channel failed', e);
@@ -747,7 +791,7 @@ async function copyChannel(id, name) {
 
   editingChannelId = null;
   currentChannelKeyCooldowns = [];
-  document.getElementById('modalTitle').textContent = window.t('channels.copyChannel');
+  setChannelModalTitle('channels.copyChannel');
   document.getElementById('channelName').value = copiedName;
   setInlineURLTableData(channel.url);
 
