@@ -200,35 +200,8 @@ func NewServer(store storage.Store) *Server {
 	// 初始化虚拟模型解析器
 	s.modelResolver = NewModelResolver(store)
 
-	// 初始化健康度缓存（启动时读取配置，修改后重启生效）
-	defaultHealthCfg := model.DefaultHealthScoreConfig()
-	successRatePenaltyWeight := configService.GetInt("success_rate_penalty_weight", defaultHealthCfg.SuccessRatePenaltyWeight)
-	if successRatePenaltyWeight < 0 {
-		log.Printf("[WARN] 无效的 success_rate_penalty_weight=%d（必须 >= 0），已使用默认值 %d", successRatePenaltyWeight, defaultHealthCfg.SuccessRatePenaltyWeight)
-		successRatePenaltyWeight = defaultHealthCfg.SuccessRatePenaltyWeight
-	}
-	windowMinutes := configService.GetInt("health_score_window_minutes", 30)
-	if windowMinutes < 1 {
-		log.Printf("[WARN] 无效的 health_score_window_minutes=%d（必须 >= 1），已使用默认值 30", windowMinutes)
-		windowMinutes = 30
-	}
-	updateInterval := configService.GetInt("health_score_update_interval", 30)
-	if updateInterval < 1 {
-		log.Printf("[WARN] 无效的 health_score_update_interval=%d（必须 >= 1），已使用默认值 30", updateInterval)
-		updateInterval = 30
-	}
-	minConfidentSample := configService.GetInt("health_min_confident_sample", defaultHealthCfg.MinConfidentSample)
-	if minConfidentSample < 1 {
-		log.Printf("[WARN] 无效的 health_min_confident_sample=%d（必须 >= 1），已使用默认值 %d", minConfidentSample, defaultHealthCfg.MinConfidentSample)
-		minConfidentSample = defaultHealthCfg.MinConfidentSample
-	}
-	healthConfig := model.HealthScoreConfig{
-		Enabled:                  configService.GetBool("enable_health_score", defaultHealthCfg.Enabled),
-		SuccessRatePenaltyWeight: successRatePenaltyWeight,
-		WindowMinutes:            windowMinutes,
-		UpdateIntervalSeconds:    updateInterval,
-		MinConfidentSample:       minConfidentSample,
-	}
+	// 初始化健康度缓存（支持热更新）
+	healthConfig := s.buildHealthConfig()
 	s.healthCache = NewHealthCache(store, healthConfig, s.shutdownCh, &s.isShuttingDown, &s.wg)
 	if healthConfig.Enabled {
 		s.healthCache.Start()
@@ -424,6 +397,40 @@ func (s *Server) InvalidateAPIKeysCache(channelID int64) {
 func (s *Server) InvalidateAllAPIKeysCache() {
 	if cache := s.getChannelCache(); cache != nil {
 		cache.InvalidateAllAPIKeysCache()
+	}
+}
+
+// buildHealthConfig 构建健康度配置（供启动和热更新复用）
+func (s *Server) buildHealthConfig() model.HealthScoreConfig {
+	defaultHealthCfg := model.DefaultHealthScoreConfig()
+
+	successRatePenaltyWeight := s.configService.GetInt("success_rate_penalty_weight", defaultHealthCfg.SuccessRatePenaltyWeight)
+	if successRatePenaltyWeight < 0 {
+		log.Printf("[WARN] 无效的 success_rate_penalty_weight=%d（必须 >= 0），已使用默认值 %d", successRatePenaltyWeight, defaultHealthCfg.SuccessRatePenaltyWeight)
+		successRatePenaltyWeight = defaultHealthCfg.SuccessRatePenaltyWeight
+	}
+	windowMinutes := s.configService.GetInt("health_score_window_minutes", 30)
+	if windowMinutes < 1 {
+		log.Printf("[WARN] 无效的 health_score_window_minutes=%d（必须 >= 1），已使用默认值 30", windowMinutes)
+		windowMinutes = 30
+	}
+	updateInterval := s.configService.GetInt("health_score_update_interval", 30)
+	if updateInterval < 1 {
+		log.Printf("[WARN] 无效的 health_score_update_interval=%d（必须 >= 1），已使用默认值 30", updateInterval)
+		updateInterval = 30
+	}
+	minConfidentSample := s.configService.GetInt("health_min_confident_sample", defaultHealthCfg.MinConfidentSample)
+	if minConfidentSample < 1 {
+		log.Printf("[WARN] 无效的 health_min_confident_sample=%d（必须 >= 1），已使用默认值 %d", minConfidentSample, defaultHealthCfg.MinConfidentSample)
+		minConfidentSample = defaultHealthCfg.MinConfidentSample
+	}
+
+	return model.HealthScoreConfig{
+		Enabled:                  s.configService.GetBool("enable_health_score", defaultHealthCfg.Enabled),
+		SuccessRatePenaltyWeight: successRatePenaltyWeight,
+		WindowMinutes:            windowMinutes,
+		UpdateIntervalSeconds:    updateInterval,
+		MinConfidentSample:       minConfidentSample,
 	}
 }
 

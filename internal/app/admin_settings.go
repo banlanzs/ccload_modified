@@ -93,11 +93,22 @@ func (s *Server) AdminUpdateSetting(c *gin.Context) {
 	noRestartKeys := map[string]bool{
 		"enable_virtual_models":      true,
 		"log_channel_click_action":   true, // 前端读取，无需重启
+		"enable_health_score":       true, // 热更新 HealthCache
 	}
 
 	if noRestartKeys[key] {
 		// 手动更新内存缓存
 		s.configService.ReloadSettings(c.Request.Context())
+
+		// 如果更新了 enable_health_score，刷新 HealthCache 配置
+		if key == "enable_health_score" && s.healthCache != nil {
+			newHealthConfig := s.buildHealthConfig()
+			if err := s.healthCache.UpdateConfig(newHealthConfig); err != nil {
+				log.Printf("[ERROR] Failed to update health cache config: %v", err)
+			} else {
+				log.Printf("[INFO] HealthCache config updated: enabled=%v", newHealthConfig.Enabled)
+			}
+		}
 
 		RespondJSON(c, http.StatusOK, gin.H{
 			"message": "保存成功",
@@ -211,6 +222,7 @@ func (s *Server) AdminBatchUpdateSettings(c *gin.Context) {
 	noRestartKeys := map[string]bool{
 		"enable_virtual_models":    true,
 		"log_channel_click_action": true,
+		"enable_health_score":      true, // 热更新 HealthCache
 	}
 
 	allNoRestart := true
@@ -224,6 +236,17 @@ func (s *Server) AdminBatchUpdateSettings(c *gin.Context) {
 	if allNoRestart {
 		// 所有配置都不需要重启，直接更新缓存
 		s.configService.ReloadSettings(c.Request.Context())
+
+		// 如果更新了 enable_health_score，刷新 HealthCache 配置
+		if _, hasHealthScore := req["enable_health_score"]; hasHealthScore && s.healthCache != nil {
+			newHealthConfig := s.buildHealthConfig()
+			if err := s.healthCache.UpdateConfig(newHealthConfig); err != nil {
+				log.Printf("[ERROR] Failed to update health cache config: %v", err)
+			} else {
+				log.Printf("[INFO] HealthCache config updated: enabled=%v", newHealthConfig.Enabled)
+			}
+		}
+
 		RespondJSON(c, http.StatusOK, gin.H{
 			"message": fmt.Sprintf("已保存 %d 项配置", len(req)),
 		})
