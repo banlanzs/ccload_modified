@@ -51,6 +51,65 @@ async function handleChannelSaveSuccess({ isNewChannel, newChannelType, savedCha
   }
 }
 
+function invokeChannelEditorAction(actionName, ...args) {
+  const action = window[actionName];
+  if (typeof action === 'function') {
+    return action(...args);
+  }
+  return undefined;
+}
+
+function initChannelEditorActions() {
+  if (typeof window.initDelegatedActions === 'function') {
+    window.initDelegatedActions({
+      root: document.body,
+      boundElement: document.body,
+      boundKey: 'channelEditorActionsBound',
+      click: {
+        'close-channel-modal': () => invokeChannelEditorAction('closeModal'),
+        'add-inline-url': () => invokeChannelEditorAction('addInlineURL'),
+        'batch-delete-urls': () => invokeChannelEditorAction('batchDeleteSelectedURLs'),
+        'open-key-import-modal': () => invokeChannelEditorAction('openKeyImportModal'),
+        'open-key-export-modal': () => invokeChannelEditorAction('openKeyExportModal'),
+        'toggle-inline-key-visibility': () => invokeChannelEditorAction('toggleInlineKeyVisibility'),
+        'batch-delete-keys': () => invokeChannelEditorAction('batchDeleteSelectedKeys'),
+        'add-common-models': () => invokeChannelEditorAction('addCommonModels'),
+        'fetch-models-from-api': () => invokeChannelEditorAction('fetchModelsFromAPI'),
+        'add-redirect-row': () => invokeChannelEditorAction('addRedirectRow'),
+        'batch-lowercase-models': () => invokeChannelEditorAction('batchLowercaseSelectedModels'),
+        'batch-delete-models': () => invokeChannelEditorAction('batchDeleteSelectedModels'),
+        'close-delete-modal': () => invokeChannelEditorAction('closeDeleteModal'),
+        'confirm-delete-channel': () => invokeChannelEditorAction('confirmDelete'),
+        'close-key-import-modal': () => invokeChannelEditorAction('closeKeyImportModal'),
+        'confirm-inline-key-import': () => invokeChannelEditorAction('confirmInlineKeyImport'),
+        'close-key-export-modal': () => invokeChannelEditorAction('closeKeyExportModal'),
+        'copy-export-keys': () => invokeChannelEditorAction('copyExportKeys'),
+        'download-export-keys': () => invokeChannelEditorAction('downloadExportKeys'),
+        'close-model-import-modal': () => invokeChannelEditorAction('closeModelImportModal'),
+        'confirm-model-import': () => invokeChannelEditorAction('confirmModelImport')
+      },
+      change: {
+        'toggle-select-all-urls': (actionTarget) => invokeChannelEditorAction('toggleSelectAllURLs', actionTarget.checked),
+        'toggle-select-all-keys': (actionTarget) => invokeChannelEditorAction('toggleSelectAllKeys', actionTarget.checked),
+        'filter-keys-by-status': (actionTarget) => invokeChannelEditorAction('filterKeysByStatus', actionTarget.value),
+        'toggle-select-all-models': (actionTarget) => invokeChannelEditorAction('toggleSelectAllModels', actionTarget.checked),
+        'update-export-preview': () => invokeChannelEditorAction('updateExportPreview')
+      },
+      input: {
+        'filter-models-by-keyword': (actionTarget) => invokeChannelEditorAction('filterModelsByKeyword', actionTarget.value)
+      }
+    });
+  }
+
+  const channelForm = document.getElementById('channelForm');
+  if (channelForm && !channelForm.dataset.channelFormBound) {
+    channelForm.addEventListener('submit', (event) => {
+      saveChannel(event);
+    });
+    channelForm.dataset.channelFormBound = '1';
+  }
+}
+
 function showAddModal() {
   editingChannelId = null;
   currentChannelKeyCooldowns = [];
@@ -617,13 +676,9 @@ async function batchRefreshSelectedChannels(mode) {
   detailSpan.style.cssText = 'font-size:0.85em;color:var(--neutral-600)';
   progressEl.appendChild(detailSpan);
 
-  let host = document.getElementById('notify-host');
-  if (!host) {
-    host = document.createElement('div');
-    host.id = 'notify-host';
-    host.style.cssText = 'position:fixed;top:var(--space-6);right:var(--space-6);display:flex;flex-direction:column;gap:var(--space-2);z-index:9999;pointer-events:none';
-    document.body.appendChild(host);
-  }
+  const host = typeof window.ensureNotifyHost === 'function'
+    ? window.ensureNotifyHost()
+    : document.body;
   host.appendChild(progressEl);
   requestAnimationFrame(() => { progressEl.style.opacity = '1'; progressEl.style.transform = 'translateX(0)'; });
 
@@ -948,7 +1003,7 @@ function addRedirectRow() {
 
 function openModelImportModal() {
   document.getElementById('modelImportTextarea').value = '';
-  document.getElementById('modelImportPreviewContent').style.display = 'none';
+  document.getElementById('modelImportPreviewContent').classList.add('hidden');
   document.getElementById('modelImportModal').classList.add('show');
   setTimeout(() => document.getElementById('modelImportTextarea').focus(), 100);
 }
@@ -970,12 +1025,12 @@ function setupModelImportPreview() {
       const models = parseModels(input);
       if (models.length > 0) {
         countSpan.textContent = models.length;
-        previewContent.style.display = 'block';
+        previewContent.classList.remove('hidden');
       } else {
-        previewContent.style.display = 'none';
+        previewContent.classList.add('hidden');
       }
     } else {
-      previewContent.style.display = 'none';
+      previewContent.classList.add('hidden');
     }
   });
 }
@@ -1080,7 +1135,10 @@ function createRedirectRow(redirect, index) {
     displayIndex: index + 1,
     from: modelName,
     to: redirect.redirect_model || '',
-    toPlaceholder: modelName || window.t('channels.leaveEmptyNoRedirect')
+    toPlaceholder: modelName || window.t('channels.leaveEmptyNoRedirect'),
+    mobileLabelModel: window.t('channels.modal.modelName'),
+    mobileLabelTarget: window.t('channels.modal.redirectTarget'),
+    mobileLabelActions: window.t('common.actions')
   };
 
   const row = TemplateEngine.render('tpl-redirect-row', rowData);

@@ -215,21 +215,22 @@
 
       // 构建表格结构
       const table = document.createElement('table');
+      table.className = 'mobile-card-table tokens-table';
       
       table.innerHTML = `
         <thead>
           <tr>
             <th>${t('tokens.table.description')}</th>
             <th>${t('tokens.table.token')}</th>
-            <th style="text-align: center;">${t('tokens.table.callCount')}</th>
-            <th style="text-align: center;">${t('tokens.table.successRate')}</th>
-            <th style="text-align: center;" title="${t('tokens.table.rpmTitle')}">${t('tokens.table.rpm')}</th>
-            <th style="text-align: center;">${t('tokens.table.tokenUsage')}</th>
-            <th style="text-align: center;">${t('tokens.table.totalCost')}</th>
-            <th style="text-align: center;">${t('tokens.table.streamAvg')}</th>
-            <th style="text-align: center;">${t('tokens.table.nonStreamAvg')}</th>
+            <th class="tokens-table-head-center">${t('tokens.table.callCount')}</th>
+            <th class="tokens-table-head-center">${t('tokens.table.successRate')}</th>
+            <th class="tokens-table-head-center" title="${t('tokens.table.rpmTitle')}">${t('tokens.table.rpm')}</th>
+            <th class="tokens-table-head-center">${t('tokens.table.tokenUsage')}</th>
+            <th class="tokens-table-head-center">${t('tokens.table.totalCost')}</th>
+            <th class="tokens-table-head-center">${t('tokens.table.streamAvg')}</th>
+            <th class="tokens-table-head-center">${t('tokens.table.nonStreamAvg')}</th>
             <th>${t('tokens.table.lastUsed')}</th>
-            <th style="width: 260px;">${t('tokens.table.actions')}</th>
+            <th class="tokens-actions-col">${t('tokens.table.actions')}</th>
           </tr>
         </thead>
       `;
@@ -290,6 +291,9 @@
       const costHtml = buildCostHtml(token.total_cost_usd);
       const streamAvgHtml = buildResponseTimeHtml(token.stream_avg_ttfb, token.stream_count);
       const nonStreamAvgHtml = buildResponseTimeHtml(token.non_stream_avg_rt, token.non_stream_count);
+      const costCellClass = token.total_cost_usd > 0 ? '' : 'mobile-empty-cell';
+      const streamCellClass = token.stream_count ? '' : 'mobile-empty-cell';
+      const nonStreamCellClass = token.non_stream_count ? '' : 'mobile-empty-cell';
 
       // 使用模板引擎渲染
       const maskedToken = token.token.length > 8
@@ -310,9 +314,23 @@
         successRateHtml: successRateHtml,
         tokensHtml: tokensHtml,
         costHtml: costHtml,
+        costCellClass: costCellClass,
         streamAvgHtml: streamAvgHtml,
+        streamCellClass: streamCellClass,
         nonStreamAvgHtml: nonStreamAvgHtml,
-        lastUsed: lastUsed
+        nonStreamCellClass: nonStreamCellClass,
+        lastUsed: lastUsed,
+        mobileLabelDescription: t('tokens.table.description'),
+        mobileLabelToken: t('tokens.table.token'),
+        mobileLabelCalls: t('tokens.table.callCount'),
+        mobileLabelSuccessRate: t('tokens.table.successRate'),
+        mobileLabelRpm: t('tokens.table.rpm'),
+        mobileLabelTokenUsage: t('tokens.table.tokenUsage'),
+        mobileLabelCost: t('tokens.table.totalCost'),
+        mobileLabelStream: t('tokens.table.streamAvg'),
+        mobileLabelNonStream: t('tokens.table.nonStreamAvg'),
+        mobileLabelLastUsed: t('tokens.table.lastUsed'),
+        mobileLabelActions: t('tokens.table.actions')
       });
     }
 
@@ -321,18 +339,17 @@
      */
     function buildCallsHtml(successCount, failureCount, totalCount) {
       if (totalCount === 0) {
-        return '<span style="color: var(--neutral-500); font-size: 13px;">-</span>';
+        return '<span class="token-value-muted">-</span>';
       }
 
-      
-      let html = '<div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">';
-      html += `<span class="stats-badge" style="background: var(--success-50); color: var(--success-700); font-weight: 600; border: 1px solid var(--success-200);" title="${t('tokens.successCall')}">`;
-      html += `<span style="color: var(--success-600); font-size: 14px; font-weight: 700;">✓</span> ${successCount.toLocaleString()}`;
+      let html = '<div class="token-call-stats">';
+      html += `<span class="stats-badge token-call-badge token-call-badge--success" title="${t('tokens.successCall')}">`;
+      html += `<span class="token-call-icon token-call-icon--success">✓</span> ${successCount.toLocaleString()}`;
       html += `</span>`;
 
       if (failureCount > 0) {
-        html += `<span class="stats-badge" style="background: var(--error-50); color: var(--error-700); font-weight: 600; border: 1px solid var(--error-200);" title="${t('tokens.failedCall')}">`;
-        html += `<span style="color: var(--error-600); font-size: 14px; font-weight: 700;">✗</span> ${failureCount.toLocaleString()}`;
+        html += `<span class="stats-badge token-call-badge token-call-badge--failure" title="${t('tokens.failedCall')}">`;
+        html += `<span class="token-call-icon token-call-icon--failure">✗</span> ${failureCount.toLocaleString()}`;
         html += `</span>`;
       }
 
@@ -350,7 +367,7 @@
 
       // 如果都是0，返回空
       if (peakRPM < 0.01 && avgRPM < 0.01 && recentRPM < 0.01) {
-        return '<span style="color: var(--neutral-500); font-size: 13px;">-</span>';
+        return '<span class="token-value-muted">-</span>';
       }
 
       // 格式化RPM值
@@ -365,10 +382,11 @@
       const avgText = formatRpm(avgRPM);
       const recentText = isToday ? formatRpm(recentRPM) : '-';
 
-      // 颜色：峰值决定整体颜色
-      const color = getRpmColor(peakRPM);
+      let rpmClass = 'token-rpm token-rpm--high';
+      if (peakRPM < 10) rpmClass = 'token-rpm token-rpm--low';
+      else if (peakRPM < 100) rpmClass = 'token-rpm token-rpm--medium';
 
-      return `<span style="color: ${color}; font-weight: 500;">${peakText}/${avgText}/${recentText}</span>`;
+      return `<span class="${rpmClass}">${peakText}/${avgText}/${recentText}</span>`;
     }
 
     /**
@@ -379,7 +397,7 @@
      */
     function buildSuccessRateHtml(successRate, totalCount) {
       if (totalCount === 0) {
-        return '<span style="color: var(--neutral-500); font-size: 13px;">-</span>';
+        return '<span class="token-value-muted">-</span>';
       }
 
       let className = 'stats-badge';
@@ -400,43 +418,26 @@
                         token.cache_creation_tokens_total > 0;
 
       if (!hasTokens) {
-        return '<span style="color: var(--neutral-500); font-size: 13px;">-</span>';
+        return '<span class="token-value-muted">-</span>';
       }
 
-      
-      let html = '<div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">';
+      const items = [];
+      const pushUsageItem = (variant, label, title, count) => {
+        if (!count || count <= 0) return;
+        items.push(
+          `<span class="token-usage-item token-usage-item--${variant}" title="${title}">` +
+            `<span class="token-usage-label">${label}</span>` +
+            `<span class="token-usage-value">${formatTokenCount(count)}</span>` +
+          `</span>`
+        );
+      };
 
-      // 输入/输出
-      html += '<div style="display: inline-flex; gap: 4px; font-size: 12px;">';
-      html += `<span class="stats-badge" style="background: var(--primary-50); color: var(--primary-700);" title="${t('tokens.inputTokens')}">`;
-      html += `${t('tokens.input')} ${formatTokenCount(token.prompt_tokens_total || 0)}`;
-      html += `</span>`;
-      html += `<span class="stats-badge" style="background: var(--secondary-50); color: var(--secondary-700);" title="${t('tokens.outputTokens')}">`;
-      html += `${t('tokens.output')} ${formatTokenCount(token.completion_tokens_total || 0)}`;
-      html += `</span>`;
-      html += '</div>';
+      pushUsageItem('input', t('tokens.input'), t('tokens.inputTokens'), token.prompt_tokens_total || 0);
+      pushUsageItem('output', t('tokens.output'), t('tokens.outputTokens'), token.completion_tokens_total || 0);
+      pushUsageItem('cache-read', t('tokens.cacheRead'), t('tokens.cacheReadTokens'), token.cache_read_tokens_total || 0);
+      pushUsageItem('cache-create', t('tokens.cacheCreate'), t('tokens.cacheCreateTokens'), token.cache_creation_tokens_total || 0);
 
-      // 缓存
-      if (token.cache_read_tokens_total > 0 || token.cache_creation_tokens_total > 0) {
-        html += '<div style="display: inline-flex; gap: 4px; font-size: 12px;">';
-
-        if (token.cache_read_tokens_total > 0) {
-          html += `<span class="stats-badge" style="background: var(--success-50); color: var(--success-700);" title="${t('tokens.cacheReadTokens')}">`;
-          html += `${t('tokens.cacheRead')} ${formatTokenCount(token.cache_read_tokens_total || 0)}`;
-          html += `</span>`;
-        }
-
-        if (token.cache_creation_tokens_total > 0) {
-          html += `<span class="stats-badge" style="background: var(--warning-50); color: var(--warning-700);" title="${t('tokens.cacheCreateTokens')}">`;
-          html += `${t('tokens.cacheCreate')} ${formatTokenCount(token.cache_creation_tokens_total || 0)}`;
-          html += `</span>`;
-        }
-
-        html += '</div>';
-      }
-
-      html += '</div>';
-      return html;
+      return `<div class="token-usage-metrics">${items.join('')}</div>`;
     }
 
     /**
@@ -444,12 +445,12 @@
      */
     function buildCostHtml(totalCostUsd) {
       if (!totalCostUsd || totalCostUsd <= 0) {
-        return '<span style="color: var(--neutral-500); font-size: 13px;">-</span>';
+        return '<span class="token-value-muted">-</span>';
       }
 
       return `
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-          <span class="metric-value" style="color: var(--success-700); font-size: 15px; font-weight: 700;">
+        <div class="token-cost">
+          <span class="metric-value token-cost-value">
             $${totalCostUsd.toFixed(4)}
           </span>
         </div>
@@ -461,7 +462,7 @@
      */
     function buildResponseTimeHtml(time, count) {
       if (!count || count === 0) {
-        return '<span style="color: var(--neutral-500); font-size: 13px;">-</span>';
+        return '<span class="token-value-muted">-</span>';
       }
 
       const responseClass = getResponseClass(time);
@@ -504,30 +505,35 @@
       const costHtml = buildCostHtml(token.total_cost_usd);
       const streamAvgHtml = buildResponseTimeHtml(token.stream_avg_ttfb, token.stream_count);
       const nonStreamAvgHtml = buildResponseTimeHtml(token.non_stream_avg_rt, token.non_stream_count);
+      const costCellClass = token.total_cost_usd > 0 ? '' : ' mobile-empty-cell';
+      const streamCellClass = token.stream_count ? '' : ' mobile-empty-cell';
+      const nonStreamCellClass = token.non_stream_count ? '' : ' mobile-empty-cell';
 
       const maskedToken = token.token.length > 8
         ? token.token.substring(0, 4) + '****' + token.token.slice(-4)
         : token.token;
 
       return `
-        <tr data-token-id="${token.id}">
-          <td style="font-weight: 500;">${escapeHtml(token.description)}</td>
-          <td>
+        <tr class="mobile-card-row token-card-row" data-token-id="${token.id}">
+          <td class="tokens-col-description" data-mobile-label="${t('tokens.table.description')}">${escapeHtml(token.description)}</td>
+          <td class="tokens-col-token" data-mobile-label="${t('tokens.table.token')}">
             <div><span class="token-display token-display-${status.class}">${escapeHtml(maskedToken)}</span></div>
-            <div style="font-size: 12px; color: var(--neutral-500); margin-top: 4px;">${createdAt}${t('tokens.createdSuffix')} · ${expiresAt}</div>
+            <div class="token-row-meta">${createdAt}${t('tokens.createdSuffix')} · ${expiresAt}</div>
           </td>
-          <td style="text-align: center;">${callsHtml}</td>
-          <td style="text-align: center;">${successRateHtml}</td>
-          <td style="text-align: center;">${rpmHtml}</td>
-          <td style="text-align: center;">${tokensHtml}</td>
-          <td style="text-align: center;">${costHtml}</td>
-          <td style="text-align: center;">${streamAvgHtml}</td>
-          <td style="text-align: center;">${nonStreamAvgHtml}</td>
-          <td style="color: var(--neutral-600);">${lastUsed}</td>
-          <td style="white-space: nowrap;">
-            <button class="btn-copy-token btn btn-secondary" style="padding: 4px 12px; font-size: 13px; margin-right: 4px;" data-token="${escapeHtml(token.token)}">${t('common.copy')}</button>
-            <button class="btn btn-secondary btn-edit" style="padding: 4px 12px; font-size: 13px; margin-right: 4px;">${t('common.edit')}</button>
-            <button class="btn btn-danger btn-delete" style="padding: 4px 12px; font-size: 13px;">${t('common.delete')}</button>
+          <td class="tokens-col-calls" data-mobile-label="${t('tokens.table.callCount')}">${callsHtml}</td>
+          <td class="tokens-col-success-rate" data-mobile-label="${t('tokens.table.successRate')}">${successRateHtml}</td>
+          <td class="tokens-col-rpm" data-mobile-label="${t('tokens.table.rpm')}">${rpmHtml}</td>
+          <td class="tokens-col-token-usage" data-mobile-label="${t('tokens.table.tokenUsage')}">${tokensHtml}</td>
+          <td class="tokens-col-cost${costCellClass}" data-mobile-label="${t('tokens.table.totalCost')}">${costHtml}</td>
+          <td class="tokens-col-stream${streamCellClass}" data-mobile-label="${t('tokens.table.streamAvg')}">${streamAvgHtml}</td>
+          <td class="tokens-col-non-stream${nonStreamCellClass}" data-mobile-label="${t('tokens.table.nonStreamAvg')}">${nonStreamAvgHtml}</td>
+          <td class="tokens-col-last-used" data-mobile-label="${t('tokens.table.lastUsed')}">${lastUsed}</td>
+          <td class="tokens-col-actions" data-mobile-label="${t('tokens.table.actions')}">
+            <div class="token-row-actions">
+              <button class="btn-copy-token btn btn-secondary token-row-action-btn" data-token="${escapeHtml(token.token)}">${t('common.copy')}</button>
+              <button class="btn btn-secondary btn-edit token-row-action-btn">${t('common.edit')}</button>
+              <button class="btn btn-danger btn-delete token-row-action-btn">${t('common.delete')}</button>
+            </div>
           </td>
         </tr>
       `;
@@ -627,6 +633,7 @@
       document.getElementById('editTokenActive').checked = token.is_active;
       if (!token.expires_at) {
         document.getElementById('editTokenExpiry').value = 'never';
+        document.getElementById('editCustomExpiryContainer').style.display = 'none';
       } else {
         document.getElementById('editTokenExpiry').value = 'custom';
         document.getElementById('editCustomExpiryContainer').style.display = 'block';
@@ -655,6 +662,7 @@
 
     function closeEditModal() {
       document.getElementById('editModal').style.display = 'none';
+      document.getElementById('editCustomExpiryContainer').style.display = 'none';
       // 清理模型限制状态
       editAllowedModels = [];
       selectedAllowedModelIndices.clear();
@@ -758,8 +766,9 @@
     function renderAllowedModelsTable() {
       const tbody = document.getElementById('allowedModelsTableBody');
       const countSpan = document.getElementById('editAllowedModelsCount');
-      const batchDeleteBtn = document.getElementById('batchDeleteAllowedModelsBtn');
       const selectAllCheckbox = document.getElementById('selectAllAllowedModels');
+      const mobileLabelModelName = t('tokens.modelName');
+      const mobileLabelActions = t('tokens.table.actions');
 
       if (!tbody) return;
 
@@ -776,10 +785,9 @@
       }
 
       if (editAllowedModels.length === 0) {
-        
         tbody.innerHTML = `
-          <tr>
-            <td colspan="3" style="text-align: center; color: var(--neutral-500); padding: 16px;">
+          <tr class="allowed-models-empty-row">
+            <td colspan="3" class="allowed-models-empty-cell">
               ${t('tokens.noModelRestriction')}
             </td>
           </tr>
@@ -788,19 +796,17 @@
       }
 
       tbody.innerHTML = editAllowedModels.map((model, index) => {
-        
         return `
-        <tr>
-          <td style="text-align: center; padding: 8px;">
+        <tr class="mobile-inline-row allowed-model-row">
+          <td class="allowed-model-col-select mobile-inline-no-label">
             <input type="checkbox" class="allowed-model-checkbox" data-index="${index}"
               data-change-action="toggle-allowed-model"
               ${selectedAllowedModelIndices.has(index) ? 'checked' : ''}
             >
           </td>
-          <td style="padding: 8px; font-family: monospace; font-size: 13px;">${escapeHtml(model)}</td>
-          <td style="text-align: center; padding: 8px;">
-            <button type="button" class="btn btn-secondary btn-sm" data-action="remove-allowed-model" data-index="${index}"
-              style="padding: 2px 8px; font-size: 12px;">${t('common.delete')}</button>
+          <td class="allowed-model-col-name" data-mobile-label="${mobileLabelModelName}">${escapeHtml(model)}</td>
+          <td class="allowed-model-col-actions" data-mobile-label="${mobileLabelActions}">
+            <button type="button" class="allowed-model-remove-btn btn btn-secondary btn-sm" data-action="remove-allowed-model" data-index="${index}">${t('common.delete')}</button>
           </td>
         </tr>
       `}).join('');
@@ -837,9 +843,7 @@
     function updateBatchDeleteBtn() {
       const btn = document.getElementById('batchDeleteAllowedModelsBtn');
       if (btn) {
-        const hasSelection = selectedAllowedModelIndices.size > 0;
-        btn.disabled = !hasSelection;
-        btn.style.opacity = hasSelection ? '1' : '0.5';
+        btn.disabled = selectedAllowedModelIndices.size === 0;
       }
     }
 
@@ -947,21 +951,23 @@
             ? t('tokens.channelNoModel')
             : t('tokens.allModelsAdded');
         container.innerHTML = `
-          <div style="text-align: center; color: var(--neutral-500); padding: 24px;">
+          <div class="available-models-empty">
             ${message}
           </div>
         `;
         // 隐藏全选容器，恢复列表圆角
         if (selectAllContainer) selectAllContainer.style.display = 'none';
-        container.style.borderRadius = '6px';
+        container.classList.add('available-models-container--standalone');
+        container.classList.remove('available-models-container--stacked');
         return;
       }
 
       // 显示全选容器，调整列表圆角
       if (selectAllContainer) {
         selectAllContainer.style.display = 'block';
-        container.style.borderRadius = '0 0 6px 6px';
       }
+      container.classList.add('available-models-container--stacked');
+      container.classList.remove('available-models-container--standalone');
 
       // 更新全选复选框状态
       if (selectAllCheckbox) {
@@ -975,11 +981,10 @@
       }
 
       container.innerHTML = models.map(model => `
-        <label class="model-option-item" data-model="${escapeHtml(model)}"
-          style="display: flex; align-items: center; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--neutral-100);">
-          <input type="checkbox" class="model-option-checkbox" data-model="${escapeHtml(model)}" style="margin-right: 8px;"
+        <label class="model-option-item" data-model="${escapeHtml(model)}">
+          <input type="checkbox" class="model-option-checkbox" data-model="${escapeHtml(model)}"
             ${selectedModelsForAdd.has(model) ? 'checked' : ''}>
-          <span style="font-family: monospace; font-size: 13px;">${escapeHtml(model)}</span>
+          <span class="model-option-label">${escapeHtml(model)}</span>
         </label>
       `).join('');
 

@@ -26,6 +26,10 @@ function calculateVisibleRange(totalItems) {
   return { visibleStart, visibleEnd };
 }
 
+function shouldUseKeyVirtualScroll() {
+  return !(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+}
+
 function renderVirtualRows(tbody, visibleStart, visibleEnd, filteredIndices) {
   const { ROW_HEIGHT } = VIRTUAL_SCROLL_CONFIG;
 
@@ -103,7 +107,10 @@ function createKeyRow(index) {
     label: label,
     inputType: inlineKeyVisible ? 'text' : 'password',
     cooldownHtml: buildCooldownHtml(index),
-    actionsHtml: buildActionsHtml(index)
+    actionsHtml: buildActionsHtml(index),
+    mobileLabelKey: window.t('channels.modal.apiKey'),
+    mobileLabelStatus: window.t('common.status'),
+    mobileLabelActions: window.t('common.actions')
   };
 
   // 使用模板引擎渲染
@@ -405,6 +412,32 @@ function renderInlineKeyTable() {
     return;
   }
 
+  if (!shouldUseKeyVirtualScroll()) {
+    cleanupVirtualScroll();
+    virtualScrollState.enabled = false;
+    virtualScrollState.filteredIndices = visibleIndices;
+    virtualScrollState.visibleStart = 0;
+    virtualScrollState.visibleEnd = visibleIndices.length;
+
+    const fragment = document.createDocumentFragment();
+    visibleIndices.forEach(index => {
+      const row = createKeyRow(index);
+      if (row) fragment.appendChild(row);
+    });
+
+    tbody.innerHTML = '';
+    tbody.appendChild(fragment);
+
+    if (virtualScrollHint) virtualScrollHint.style.display = 'none';
+    updateSelectAllCheckbox();
+    updateBatchDeleteButton();
+
+    if (window.i18n && window.i18n.translatePage) {
+      window.i18n.translatePage();
+    }
+    return;
+  }
+
   virtualScrollState.enabled = true;
   const shouldResetScroll = !virtualScrollState.filteredIndices ||
     virtualScrollState.filteredIndices.length !== visibleIndices.length;
@@ -619,9 +652,9 @@ function copyKeyToClipboard(index) {
   if (!keyText) return;
 
   window.copyToClipboard(keyText).then(() => {
-    showToast(window.t('channels.keyCopied'), 'success');
+    if (window.showSuccess) window.showSuccess(window.t('channels.keyCopied'));
   }).catch(() => {
-    showToast(window.t('channels.keyCopyFailed'), 'error');
+    if (window.showError) window.showError(window.t('channels.keyCopyFailed'));
   });
 }
 
@@ -825,7 +858,7 @@ function confirmInlineKeyImport() {
 
 function openKeyImportModal() {
   document.getElementById('keyImportTextarea').value = '';
-  document.getElementById('keyImportPreviewContent').style.display = 'none';
+  document.getElementById('keyImportPreviewContent').classList.add('hidden');
   document.getElementById('keyImportModal').classList.add('show');
   setTimeout(() => document.getElementById('keyImportTextarea').focus(), 100);
 }
@@ -847,12 +880,12 @@ function setupKeyImportPreview() {
       const keys = parseKeys(input);
       if (keys.length > 0) {
         countSpan.textContent = keys.length;
-        previewContent.style.display = 'block';
+        previewContent.classList.remove('hidden');
       } else {
-        previewContent.style.display = 'none';
+        previewContent.classList.add('hidden');
       }
     } else {
-      previewContent.style.display = 'none';
+      previewContent.classList.add('hidden');
     }
   });
 }
@@ -928,10 +961,10 @@ function copyExportKeys() {
   const count = selectedKeyIndices.size;
 
   window.copyToClipboard(text).then(() => {
-    showToast(window.t('channels.keysCopied', { count }), 'success');
+    if (window.showSuccess) window.showSuccess(window.t('channels.keysCopied', { count }));
     closeKeyExportModal();
   }).catch(() => {
-    showToast(window.t('channels.keyCopyFailed'), 'error');
+    if (window.showError) window.showError(window.t('channels.keyCopyFailed'));
   });
 }
 
