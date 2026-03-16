@@ -540,6 +540,7 @@ function updateBatchChannelSelectionUI() {
     'batchRefreshMergeBtn',
     'batchRefreshReplaceBtn',
     'batchEditCommonModelsBtn',
+    'batchSetPriorityBtn',
     'batchDeleteChannelsBtn'
   ];
   actionBtnIDs.forEach((id) => {
@@ -1991,4 +1992,81 @@ document.addEventListener('DOMContentLoaded', function () {
       redirectInput.style.opacity = this.checked ? '1' : '0.5';
     });
   }
+});
+
+// ==================== 批量设置优先级 ====================
+
+function openBatchSetPriority() {
+  const channelIDs = getSelectedChannelIDs();
+  if (channelIDs.length === 0) {
+    if (window.showWarning) window.showWarning(window.t('channels.batchNoSelection'));
+    return;
+  }
+
+  const desc = document.getElementById('batchSetPriorityDesc');
+  if (desc) {
+    desc.textContent = window.t('channels.batchSetPriorityDesc', { count: channelIDs.length });
+  }
+
+  // 预填当前第一个选中渠道的优先级
+  const firstChannel = (channels || []).find(c => c.id === channelIDs[0]);
+  const input = document.getElementById('batchPriorityInput');
+  if (input) input.value = firstChannel ? (firstChannel.priority || 0) : 0;
+
+  document.getElementById('batchSetPriorityModal').classList.add('show');
+}
+
+function closeBatchSetPriority() {
+  document.getElementById('batchSetPriorityModal').classList.remove('show');
+}
+
+async function confirmBatchSetPriority() {
+  const channelIDs = getSelectedChannelIDs();
+  if (channelIDs.length === 0) return;
+
+  const input = document.getElementById('batchPriorityInput');
+  const priority = parseInt(input?.value ?? '0', 10);
+  if (isNaN(priority)) {
+    if (window.showWarning) window.showWarning(window.t('channels.batchSetPriorityInvalid'));
+    return;
+  }
+
+  const confirmBtn = document.getElementById('confirmBatchSetPriorityBtn');
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = window.t('common.saving') || '保存中...'; }
+
+  try {
+    const updates = channelIDs.map(id => ({ id, priority }));
+    const resp = await fetchAPIWithAuth('/admin/channels/batch-priority', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates })
+    });
+    if (!resp.success) throw new Error(resp.error || window.t('common.failed'));
+
+    closeBatchSetPriority();
+    clearChannelsCache();
+    await loadChannels(filters.channelType);
+
+    if (window.showSuccess) {
+      window.showSuccess(window.t('channels.batchSetPrioritySaved', {
+        count: channelIDs.length,
+        priority
+      }));
+    }
+  } catch (e) {
+    console.error('batch-set-priority failed', e);
+    if (window.showError) window.showError(window.t('channels.batchOperationFailed', { error: e.message }));
+  } finally {
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = window.t('common.confirm') || '确认'; }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const closeBtn = document.getElementById('closeBatchSetPriorityBtn');
+  const cancelBtn = document.getElementById('cancelBatchSetPriorityBtn');
+  const confirmBtn = document.getElementById('confirmBatchSetPriorityBtn');
+
+  if (closeBtn) closeBtn.addEventListener('click', closeBatchSetPriority);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeBatchSetPriority);
+  if (confirmBtn) confirmBtn.addEventListener('click', confirmBatchSetPriority);
 });

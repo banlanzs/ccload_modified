@@ -207,6 +207,17 @@
                 </span>
                 <span data-i18n="channels.batchEditCommonModels">编辑共有模型</span>
               </button>
+              <button id="batchSetPriorityBtn" type="button"
+                class="btn btn-sm channel-batch-action channel-batch-action--edit"
+                data-action="batch-set-priority" disabled>
+                <span class="channel-batch-action__icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 10h12M4 6h8M4 14h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M15 12l2 2-2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </span>
+                <span data-i18n="channels.batchSetPriority">批量设置优先级</span>
+              </button>
             </div>
             <button id="batchFloatingMenuCloseBtn" type="button" class="channel-batch-close"
               data-action="clear-selected-channels" data-i18n-title="common.close" title="关闭" disabled>
@@ -1205,6 +1216,28 @@
       <!-- 第一步无操作按钮，第二步显示保存 -->
       <button id="saveBatchEditCommonModelsBtn" class="btn btn-primary" type="button" style="display:none;" data-i18n="common.save">保存</button>
       <button id="cancelBatchEditCommonModelsBtn" class="btn btn-secondary" type="button" data-i18n="common.cancel">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 批量设置优先级模态框 -->
+<div id="batchSetPriorityModal" class="modal">
+  <div class="modal-content" style="max-width: 420px;">
+    <div class="modal-header">
+      <h3 data-i18n="channels.batchSetPriorityTitle">批量设置优先级</h3>
+      <button class="modal-close" id="closeBatchSetPriorityBtn" type="button">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="batchSetPriorityDesc" style="margin: 0 0 14px; color: var(--neutral-600); font-size: 13px;"></p>
+      <div class="form-group">
+        <label class="form-label" for="batchPriorityInput" data-i18n="channels.batchSetPriorityLabel">优先级值</label>
+        <input type="number" id="batchPriorityInput" class="form-input" value="0" min="-9999" max="9999" step="1">
+        <small style="color:var(--neutral-400); font-size:12px;" data-i18n="channels.batchSetPriorityHint">数值越大优先级越高，相同优先级按Key数量加权随机</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="confirmBatchSetPriorityBtn" class="btn btn-primary" type="button" data-i18n="common.confirm">确认</button>
+      <button id="cancelBatchSetPriorityBtn" class="btn btn-secondary" type="button" data-i18n="common.cancel">取消</button>
     </div>
   </div>
 </div>
