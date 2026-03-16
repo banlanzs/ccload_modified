@@ -710,6 +710,9 @@ function toggleSelectAllKeys(checked) {
   renderInlineKeyTable();
 }
 
+// 导出到全局，供事件委托使用
+window.toggleSelectAllKeys = toggleSelectAllKeys;
+
 function updateBatchDeleteButton() {
   const btn = document.getElementById('batchDeleteKeysBtn');
   if (!btn) return;

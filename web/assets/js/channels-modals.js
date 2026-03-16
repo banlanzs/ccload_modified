@@ -1356,6 +1356,10 @@ function toggleSelectAllModels(checked) {
   renderRedirectTable();
 }
 
+// 导出到全局，供事件委托使用
+window.toggleSelectAllModels = toggleSelectAllModels;
+window.toggleVisibleChannelsSelection = toggleVisibleChannelsSelection;
+
 /**
  * 更新批量删除按钮状态
  */

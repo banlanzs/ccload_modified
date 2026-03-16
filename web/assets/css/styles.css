@@ -2070,6 +2070,8 @@ body {
   position: relative;
   flex: 1 1 auto;
   min-width: 140px;
+  display: flex;
+  align-items: center;
 }
 
 .filter-dropdown {

@@ -224,6 +224,9 @@ function toggleSelectAllURLs(checked) {
   renderInlineURLTable();
 }
 
+// 导出到全局，供事件委托使用
+window.toggleSelectAllURLs = toggleSelectAllURLs;
+
 function deleteInlineURL(index) {
   if (index < 0 || index >= inlineURLTableData.length) return;
 

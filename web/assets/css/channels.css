@@ -315,6 +315,8 @@
 
     .channel-hover-clear-btn:hover {
       background: var(--neutral-100) !important;
+      border-color: var(--neutral-300) !important;
+      color: var(--neutral-700) !important;
     }
 
     .channel-hover-key-toggle-btn:hover {
@@ -2542,3 +2544,27 @@
         padding: 12px;
       }
     }
+.filter-input--with-clear {
+  padding-right: 40px;
+}
+
+.channel-hover-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
+  color: var(--neutral-500);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
