@@ -17,7 +17,7 @@ function highlightFromHash() {
 // 从URL参数获取目标渠道ID，查询其类型并返回
 async function getTargetChannelType() {
   const params = new URLSearchParams(location.search);
-  const channelId = params.get('id');
+  const channelId = params.get('id') || params.get('highlight');
   if (!channelId) return null;
 
   try {
@@ -112,13 +112,15 @@ window.initPageBootstrap({
 
   // 优先从 localStorage 恢复，其次检查 URL 参数，最后默认 all
   const savedFilters = loadChannelsFilters();
-  const targetChannelType = await getTargetChannelType();
-  const initialType = targetChannelType || (savedFilters?.channelType) || 'all';
-
-  filters.channelType = initialType;
   const urlChannelId = new URLSearchParams(location.search).get('id');
+  const urlHighlightId = new URLSearchParams(location.search).get('highlight');
+  const urlTargetId = urlChannelId || urlHighlightId; // 任意一种跳转参数
+  // 从日志跳转时必须查询目标渠道类型，不能回落到已保存的筛选器类型
+  const targetChannelType = await getTargetChannelType();
+  const initialType = targetChannelType || (urlTargetId ? 'all' : (savedFilters?.channelType)) || 'all';
+  filters.channelType = initialType;
   if (urlChannelId) {
-    // 从日志等页面跳转过来时，仅按渠道ID过滤，清除其他条件
+    // 从日志等页面跳转过来时（?id=），仅按渠道ID过滤，清除其他条件
     filters.status = 'all';
     filters.model = 'all';
     filters.search = '';
@@ -137,6 +139,25 @@ window.initPageBootstrap({
     document.getElementById('idFilter').value = urlChannelId;
     const clearBtn = document.getElementById('clearSearchBtn');
     if (clearBtn) clearBtn.style.opacity = '0';
+    saveChannelsFilters();
+  } else if (urlHighlightId) {
+    // 从日志等页面跳转过来时（?highlight=），清除所有筛选条件，确保目标渠道可见
+    filters.status = 'all';
+    filters.model = 'all';
+    filters.search = '';
+    filters.id = '';
+    document.getElementById('statusFilter').value = 'all';
+    const modelFilterEl = document.getElementById('modelFilter');
+    if (modelFilterEl) {
+      modelFilterEl.value = (typeof modelFilterInputValueFromFilterValue === 'function')
+        ? modelFilterInputValueFromFilterValue('all')
+        : window.t('channels.modelAll');
+    }
+    if (typeof modelFilterCombobox !== 'undefined' && modelFilterCombobox) {
+      modelFilterCombobox.setValue('all', modelFilterInputValueFromFilterValue('all'));
+    }
+    document.getElementById('searchInput').value = '';
+    document.getElementById('idFilter').value = '';
     saveChannelsFilters();
   } else if (savedFilters) {
     filters.status = savedFilters.status || 'all';
