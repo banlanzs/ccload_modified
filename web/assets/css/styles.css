@@ -5263,7 +5263,7 @@ body.trend-page .chart-info {
 /* ===== 返回顶部按钮样式 ===== */
 .back-to-top-btn {
   position: fixed;
-  bottom: var(--space-6);
+  bottom: 80px;
   right: var(--space-6);
   width: 48px;
   height: 48px;
