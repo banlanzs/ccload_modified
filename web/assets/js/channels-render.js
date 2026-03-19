@@ -190,7 +190,7 @@ function buildChannelTimingHtml(stats) {
  * @param {Object} channel - 渠道数据
  * @returns {HTMLElement|null} 行元素
  */
-function createChannelCard(channel) {
+function createChannelCard(channel, displayIndex) {
   const isCooldown = channel.cooldown_remaining_ms > 0;
   const channelTypeRaw = (channel.channel_type || '').toLowerCase();
   const stats = channelStatsById[channel.id] || null;
@@ -249,6 +249,7 @@ function createChannelCard(channel) {
   const cardData = {
     rowClasses: rowClasses.join(' '),
     id: channel.id,
+    displayIndex: displayIndex || channel.id,
     name: channel.name,
     typeBadge: buildChannelTypeBadge(channelTypeRaw),
     url: channel.url,
@@ -342,7 +343,7 @@ function initChannelEventDelegation() {
   });
 }
 
-function renderChannels(channelsToRender = channels) {
+function renderChannels(channelsToRender = channels, startIndex = 0) {
   const el = document.getElementById('channels-container');
   if (!channelsToRender || channelsToRender.length === 0) {
     el.innerHTML = `<div class="glass-card">${window.t('channels.noChannels')}</div>`;
@@ -370,8 +371,8 @@ function renderChannels(channelsToRender = channels) {
   </thead>`;
 
   const tbody = document.createElement('tbody');
-  channelsToRender.forEach(channel => {
-    const row = createChannelCard(channel);
+  channelsToRender.forEach((channel, i) => {
+    const row = createChannelCard(channel, startIndex + i + 1);
     if (row) tbody.appendChild(row);
   });
 

@@ -79,7 +79,16 @@ function filterChannels() {
   });
 
   filteredChannels = filtered; // 保存筛选后的列表供其他模块使用
-  renderChannels(filtered);
+
+  // 分页切片
+  const totalPages = Math.max(1, Math.ceil(filtered.length / channelPageSize));
+  if (currentChannelPage > totalPages) currentChannelPage = totalPages;
+  if (currentChannelPage < 1) currentChannelPage = 1;
+  const startIdx = (currentChannelPage - 1) * channelPageSize;
+  const pageChannels = filtered.slice(startIdx, startIdx + channelPageSize);
+
+  renderChannels(pageChannels, startIdx);
+  updateChannelPagination(filtered.length);
   updateFilterInfo(filtered.length, channels.length);
 }
 
@@ -131,6 +140,7 @@ function setupFilterListeners() {
   const debouncedFilter = debounce(() => {
     filters.search = searchInput.value;
     if (typeof saveChannelsFilters === 'function') saveChannelsFilters();
+    resetChannelPage();
     filterChannels();
     updateClearButton();
   }, 300);
@@ -141,6 +151,7 @@ function setupFilterListeners() {
     searchInput.value = '';
     filters.search = '';
     if (typeof saveChannelsFilters === 'function') saveChannelsFilters();
+    resetChannelPage();
     filterChannels();
     updateClearButton();
     searchInput.focus();
@@ -154,6 +165,7 @@ function setupFilterListeners() {
   const debouncedIdFilter = debounce(() => {
     filters.id = idFilter.value;
     if (typeof saveChannelsFilters === 'function') saveChannelsFilters();
+    resetChannelPage();
     filterChannels();
   }, 300);
   idFilter.addEventListener('input', debouncedIdFilter);
@@ -161,6 +173,7 @@ function setupFilterListeners() {
   document.getElementById('statusFilter').addEventListener('change', (e) => {
     filters.status = e.target.value;
     if (typeof saveChannelsFilters === 'function') saveChannelsFilters();
+    resetChannelPage();
     filterChannels();
   });
 
@@ -182,6 +195,7 @@ function setupFilterListeners() {
       onSelect: (value) => {
         filters.model = value;
         if (typeof saveChannelsFilters === 'function') saveChannelsFilters();
+        resetChannelPage();
         filterChannels();
       }
     });
@@ -197,6 +211,7 @@ function setupFilterListeners() {
     if (typeof saveChannelsFilters === 'function') saveChannelsFilters();
 
     // 执行筛选
+    resetChannelPage();
     filterChannels();
   });
 
@@ -209,9 +224,103 @@ function setupFilterListeners() {
           filters.search = document.getElementById('searchInput').value;
           filters.id = document.getElementById('idFilter').value;
           if (typeof saveChannelsFilters === 'function') saveChannelsFilters();
+          resetChannelPage();
           filterChannels();
         }
       });
     }
   });
+}
+
+// ==================== 分页控制 ====================
+
+function updateChannelPagination(totalFiltered) {
+  const paginationEl = document.getElementById('channelPagination');
+  if (!paginationEl) return;
+
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / channelPageSize));
+
+  // 仅在有多页时显示分页
+  paginationEl.style.display = totalPages > 1 ? '' : 'none';
+
+  const currentPageEl = document.getElementById('ch_current_page');
+  const totalPagesEl = document.getElementById('ch_total_pages');
+  if (currentPageEl) currentPageEl.textContent = currentChannelPage;
+  if (totalPagesEl) totalPagesEl.textContent = totalPages;
+
+  const firstEl = document.getElementById('ch_first');
+  const prevEl = document.getElementById('ch_prev');
+  const nextEl = document.getElementById('ch_next');
+  const lastEl = document.getElementById('ch_last');
+
+  const prevDisabled = currentChannelPage <= 1;
+  const nextDisabled = currentChannelPage >= totalPages;
+
+  if (firstEl) firstEl.disabled = prevDisabled;
+  if (prevEl) prevEl.disabled = prevDisabled;
+  if (nextEl) nextEl.disabled = nextDisabled;
+  if (lastEl) lastEl.disabled = nextDisabled;
+
+  // 同步 pageSize 下拉框
+  const pageSizeEl = document.getElementById('ch_page_size');
+  if (pageSizeEl) pageSizeEl.value = String(channelPageSize);
+}
+
+function firstChannelPage() {
+  if (currentChannelPage > 1) {
+    currentChannelPage = 1;
+    filterChannels();
+  }
+}
+
+function prevChannelPage() {
+  if (currentChannelPage > 1) {
+    currentChannelPage--;
+    filterChannels();
+  }
+}
+
+function nextChannelPage() {
+  const totalPages = Math.max(1, Math.ceil(filteredChannels.length / channelPageSize));
+  if (currentChannelPage < totalPages) {
+    currentChannelPage++;
+    filterChannels();
+  }
+}
+
+function lastChannelPage() {
+  const totalPages = Math.max(1, Math.ceil(filteredChannels.length / channelPageSize));
+  if (currentChannelPage < totalPages) {
+    currentChannelPage = totalPages;
+    filterChannels();
+  }
+}
+
+function changeChannelPageSize() {
+  const el = document.getElementById('ch_page_size');
+  if (!el) return;
+  const newSize = parseInt(el.value);
+  if (newSize > 0 && newSize !== channelPageSize) {
+    channelPageSize = newSize;
+    currentChannelPage = 1;
+    filterChannels();
+  }
+}
+
+function resetChannelPage() {
+  currentChannelPage = 1;
+}
+
+function setupChannelPaginationListeners() {
+  const firstBtn = document.getElementById('ch_first');
+  const prevBtn = document.getElementById('ch_prev');
+  const nextBtn = document.getElementById('ch_next');
+  const lastBtn = document.getElementById('ch_last');
+  const pageSizeSelect = document.getElementById('ch_page_size');
+
+  if (firstBtn) firstBtn.addEventListener('click', firstChannelPage);
+  if (prevBtn) prevBtn.addEventListener('click', prevChannelPage);
+  if (nextBtn) nextBtn.addEventListener('click', nextChannelPage);
+  if (lastBtn) lastBtn.addEventListener('click', lastChannelPage);
+  if (pageSizeSelect) pageSizeSelect.addEventListener('change', changeChannelPageSize);
 }

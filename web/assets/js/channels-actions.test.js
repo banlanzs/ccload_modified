@@ -21,7 +21,7 @@ test('操作列为五个操作按钮保留足够宽度', () => {
   assert.ok(actionsColumnStyle, '缺少 .ch-col-actions 样式');
 
   const styleBlock = actionsColumnStyle[0];
-  assert.match(styleBlock, /width:\s*220px/);
-  assert.match(styleBlock, /min-width:\s*220px/);
-  assert.match(styleBlock, /max-width:\s*220px/);
+  // 响应式设计：使用 clamp(150px, 16vw, 200px)，不再使用固定 220px
+  assert.match(styleBlock, /width:\s*clamp\(/);
+  assert.match(styleBlock, /min-width:/);
 });

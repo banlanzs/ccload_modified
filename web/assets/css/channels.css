@@ -2568,3 +2568,74 @@
   justify-content: center;
   box-sizing: border-box;
 }
+
+/* ==================== 分页控件 ==================== */
+.channel-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 0;
+  margin-top: 8px;
+}
+
+.channel-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.channel-pagination-controls .btn-sm {
+  padding: 4px 8px;
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--neutral-200);
+  border-radius: 6px;
+  background: var(--neutral-50);
+  color: var(--neutral-700);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.channel-pagination-controls .btn-sm:hover:not(:disabled) {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-600);
+}
+
+.channel-pagination-controls .btn-sm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.channel-pagination-info {
+  font-size: 14px;
+  color: var(--neutral-600);
+  padding: 0 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.channel-pagination-info #ch_current_page,
+.channel-pagination-info #ch_total_pages {
+  font-weight: 600;
+  color: var(--neutral-800);
+}
+
+.channel-pagination-select {
+  padding: 4px 8px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--neutral-50);
+  color: var(--neutral-700);
+  cursor: pointer;
+  height: 32px;
+}
+
+.channel-pagination-label {
+  font-size: 13px;
+  color: var(--neutral-500);
+}

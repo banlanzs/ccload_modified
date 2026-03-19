@@ -11,6 +11,8 @@ let currentModelFilter = ''; // 模型名称筛选关键字
 let defaultTestContent = 'When was Claude 3.5 Sonnet released?'; // Default test content (loaded from settings)
 let channelStatsRange = 'today'; // 渠道统计时间范围（从设置加载）
 let channelsCache = {}; // 按类型缓存渠道数据: {type: channels[]}
+let channelPageSize = 20;       // 每页渠道数
+let currentChannelPage = 1;     // 当前页码
 let selectedChannelIds = new Set(); // 选中的渠道ID（字符串，避免数字/字符串混用）
 
 function normalizeSelectedChannelID(id) {

@@ -1,7 +1,14 @@
 function highlightFromHash() {
   const m = (location.hash || '').match(/^#channel-(\d+)$/);
   if (!m) return;
-  const el = document.getElementById(`channel-${m[1]}`);
+  const channelId = m[1];
+  // 跳转到目标渠道所在的分页
+  const idx = filteredChannels.findIndex(ch => String(ch.id) === channelId);
+  if (idx >= 0 && Math.floor(idx / channelPageSize) + 1 !== currentChannelPage) {
+    currentChannelPage = Math.floor(idx / channelPageSize) + 1;
+    filterChannels();
+  }
+  const el = document.getElementById(`channel-${channelId}`);
   if (!el) return;
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   const prev = el.style.boxShadow;
@@ -98,6 +105,7 @@ window.initPageBootstrap({
   run: async () => {
   initChannelsPageActions();
   setupFilterListeners();
+  setupChannelPaginationListeners();
   setupImportExport();
   setupKeyImportPreview();
   setupModelImportPreview();
@@ -203,6 +211,7 @@ window.initPageBootstrap({
       }
     }
     saveChannelsFilters();
+    resetChannelPage();
     loadChannels(type);
   });
 
@@ -215,6 +224,12 @@ window.initPageBootstrap({
   // 处理 highlight 参数（从日志页面跳转过来）
   const highlightId = new URLSearchParams(location.search).get('highlight');
   if (highlightId) {
+    // 跳转到目标渠道所在的分页
+    const idx = filteredChannels.findIndex(ch => String(ch.id) === highlightId);
+    if (idx >= 0) {
+      currentChannelPage = Math.floor(idx / channelPageSize) + 1;
+      filterChannels();
+    }
     // 等待渲染完成后高亮
     setTimeout(() => {
       const el = document.getElementById(`channel-${highlightId}`);
@@ -238,7 +253,7 @@ window.initPageBootstrap({
 
   // 监听语言切换事件，重新渲染渠道列表
   window.i18n.onLocaleChange(() => {
-    renderChannels();
+    filterChannels();
     updateModelOptions();
   });
   }

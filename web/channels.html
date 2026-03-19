@@ -126,6 +126,32 @@
 
         <section>
           <div id="channels-container" class="grid grid-cols-1 gap-6"></div>
+
+          <div id="channelPagination" class="channel-pagination" style="display:none;">
+            <div class="channel-pagination-controls">
+              <button id="ch_first" class="btn btn-sm" data-i18n-title="channels.pagination.first" title="首页">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3v8M4.5 7l5-4v8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button id="ch_prev" class="btn btn-sm" data-i18n-title="channels.pagination.prev" title="上一页">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <span class="channel-pagination-info">
+                <span id="ch_current_page">1</span> / <span id="ch_total_pages">1</span>
+              </span>
+              <button id="ch_next" class="btn btn-sm" data-i18n-title="channels.pagination.next" title="下一页">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button id="ch_last" class="btn btn-sm" data-i18n-title="channels.pagination.last" title="末页">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 3v8M9.5 7l-5-4v8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <select id="ch_page_size" class="channel-pagination-select">
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <span class="channel-pagination-label" data-i18n="channels.pagination.perPage">条/页</span>
+            </div>
+          </div>
         </section>
 
         <div id="batchFloatingMenu" class="channel-batch-float" aria-hidden="true">
@@ -1043,7 +1069,7 @@
       </td>
       <td class="ch-col-name">
         <div class="ch-name-line">
-          <div class="ch-name-main">{{{typeBadge}}}<strong>{{name}}</strong><span class="ch-id-text">(ID: {{id}})</span>{{{disabledBadge}}}</div>
+          <div class="ch-name-main">{{{typeBadge}}}<strong>{{name}}</strong><span class="ch-id-text" title="ID: {{id}}">#{{displayIndex}}</span>{{{disabledBadge}}}</div>
           <div class="ch-name-statuses">{{{cooldownBadge}}}</div>
         </div>
         <div class="ch-url-line" title="{{url}}">{{url}}</div>

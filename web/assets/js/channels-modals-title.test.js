@@ -39,6 +39,9 @@ test('setChannelModalTitle 同步更新弹窗标题文本和国际化键', () =>
       getElementById(id) {
         assert.equal(id, 'modalTitle');
         return titleEl;
+      },
+      addEventListener() {
+        // Mock: 忽略 DOMContentLoaded 事件注册
       }
     },
     console
