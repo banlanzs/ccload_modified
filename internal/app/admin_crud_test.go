@@ -26,9 +26,11 @@ func setupAdminTestServer(t *testing.T) (*Server, storage.Store, func()) {
 	}
 
 	statsCache := NewStatsCache(store)
+	configService := NewConfigService(store)
 	server := &Server{
-		store:      store,
-		statsCache: statsCache,
+		store:         store,
+		statsCache:    statsCache,
+		configService: configService,
 	}
 
 	cleanup := func() {
