@@ -57,8 +57,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
       -X ccLoad/internal/version.Commit=${BUILD_COMMIT} \
       -X 'ccLoad/internal/version.BuildTime=${BUILD_TIME}' \
       -X ccLoad/internal/version.BuiltBy=docker" \
-    -o ccload . && \
-    xx-verify ccload
+    -o ccload_modified . && \
+    xx-verify ccload_modified
 
 # ============================================
 # 阶段4: 运行时镜像 (最小化)
@@ -75,7 +75,7 @@ RUN addgroup -g 1001 -S ccload && \
 WORKDIR /app
 
 # 从构建阶段复制（web资源已嵌入二进制）
-COPY --from=builder /app/ccload .
+COPY --from=builder /app/ccload_modified .
 
 # 创建数据目录并设置权限
 RUN mkdir -p /app/data && \
@@ -92,4 +92,4 @@ ENV PORT=8080 \
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-CMD ["./ccload"]
+CMD ["./ccload_modified"]

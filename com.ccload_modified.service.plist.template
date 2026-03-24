@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.ccload.service</string>
+    <string>com.ccload_modified.service</string>
     <key>ProgramArguments</key>
     <array>
-        <string>{{PROJECT_DIR}}/ccload</string>
+        <string>{{PROJECT_DIR}}/ccload_modified</string>
     </array>
     <key>WorkingDirectory</key>
     <string>{{PROJECT_DIR}}</string>

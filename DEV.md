@@ -77,7 +77,7 @@ go build -tags go_json -ldflags "
   -X ccLoad+ccr/internal/version.Commit=$(git rev-parse --short HEAD)
   -X 'ccLoad+ccr/internal/version.BuildTime=$(date \"+%Y-%m-%d %H:%M:%S %z\")'
   -X ccLoad+ccr/internal/version.BuiltBy=$(whoami)
-" -o ccload+ccr .
+" -o ccload_modified .
 ```
 
 ## 运行测试
@@ -95,7 +95,7 @@ go test -tags go_json -race ./internal/...
 | 命令 | 说明 |
 |------|------|
 | `go run -tags go_json .` | 开发运行 |
-| `go build -tags go_json -o ccload+ccr .` | 编译 |
+| `go build -tags go_json -o ccload_modified .` | 编译 |
 | `go test -tags go_json ./internal/...` | 运行测试 |
 | `golangci-lint run ./...` | 代码检查 |
 
@@ -126,5 +126,5 @@ go run -tags go_json .
 ```bash
 # 清理缓存后重试
 go clean -cache
-go build -tags go_json -o ccload+ccr .
+go build -tags go_json -o ccload_modified .
 ```

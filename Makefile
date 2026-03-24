@@ -1,12 +1,12 @@
 # ccLoad Makefile - macOS Service Management
 
 # 变量定义
-SERVICE_NAME = com.ccload+ccr.service
+SERVICE_NAME = com.ccload_modified.service
 PLIST_TEMPLATE = $(SERVICE_NAME).plist.template
 PLIST_FILE = $(SERVICE_NAME).plist
 LAUNCH_AGENTS_DIR = $(HOME)/Library/LaunchAgents
 TARGET_PLIST = $(LAUNCH_AGENTS_DIR)/$(PLIST_FILE)
-BINARY_NAME = ccload+ccr
+BINARY_NAME = ccload_modified
 LOG_DIR = logs
 PROJECT_DIR = $(shell pwd)
 GOTAGS ?= go_json
@@ -27,7 +27,7 @@ LDFLAGS = -s -w \
 
 # 默认目标
 help:
-	@echo "ccLoad+ccr 服务管理 Makefile"
+	@echo "ccload_modified 服务管理 Makefile"
 	@echo ""
 	@echo "可用命令:"
 	@echo "  build             - 构建二进制文件"
@@ -51,7 +51,7 @@ build:
 	@echo "构建完成: $(BINARY_NAME)"
 
 # 构建 Docker 镜像（自动注入版本信息）
-DOCKER_IMAGE ?= ccload+ccr
+DOCKER_IMAGE ?= ccload_modified
 DOCKER_TAG ?= $(VERSION)
 docker-build:
 	@echo "构建 Docker 镜像 $(DOCKER_IMAGE):$(DOCKER_TAG)..."
